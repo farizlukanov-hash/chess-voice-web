@@ -235,6 +235,15 @@ export class VoiceParser {
       }
     }
 
+    // ВАЖНО: Если parsed это ход пешки, проверяем что указана буква вертикали
+    if (!/^[A-Z]/.test(parsed)) {
+      // Это ход пешки - должна быть буква + цифра (e4, a6 и т.д.)
+      if (parsed.length < 2) {
+        // Только цифра без буквы - отклоняем
+        return null
+      }
+    }
+
     // Проверяем прямое совпадение
     if (legalMoves.includes(parsed)) {
       return parsed
