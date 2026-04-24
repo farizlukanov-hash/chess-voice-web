@@ -152,17 +152,22 @@ function App() {
             return
           }
 
-          // not-allowed - показываем пользователю
+          // not-allowed - это критическая ошибка
           if (event.error === 'not-allowed') {
             console.error('[Web Speech] NOT-ALLOWED - доступ запрещён!')
-            setStatus('❌ Доступ к микрофону запрещён')
+            setStatus('❌ Микрофон заблокирован браузером')
             setIsListening(false)
-            alert('Доступ к микрофону запрещён. Проверьте настройки браузера:\n1. Нажмите на иконку замка в адресной строке\n2. Разрешите доступ к микрофону\n3. Перезагрузите страницу')
+
+            // Показываем alert только один раз
+            if (!window._micPermissionAlertShown) {
+              window._micPermissionAlertShown = true
+              alert('Браузер заблокировал доступ к микрофону.\n\nЧто делать:\n1. Нажмите на замок/информацию в адресной строке\n2. Найдите "Микрофон" → выберите "Разрешить"\n3. Перезагрузите страницу\n4. Попробуйте снова\n\nЕсли не помогает - очистите данные сайта в настройках браузера.')
+            }
             return
           }
 
           console.error('[Web Speech] Ошибка:', event.error)
-          setStatus(`❌ Ошибка микрофона: ${event.error}`)
+          setStatus(`❌ Ошибка: ${event.error}`)
         }
 
         recognitionRef.current.onend = () => {
@@ -251,11 +256,11 @@ function App() {
     console.log('[startListening] isNative:', isNative)
     console.log('[startListening] window.AndroidVoice:', typeof window.AndroidVoice)
 
-    setIsListening(true)
-
     // Проверяем наличие AndroidVoice напрямую
     if (typeof window.AndroidVoice !== 'undefined') {
       console.log('[startListening] AndroidVoice найден! Использую его напрямую')
+
+      setIsListening(true)
 
       if (!nativeVoiceRef.current) {
         console.log('[startListening] Создаю NativeVoiceRecognition')
@@ -286,45 +291,25 @@ function App() {
       console.log('[startListening] Использую Web Speech API')
 
       try {
-        // ВАЖНО: Сначала запрашиваем getUserMedia для гарантии разрешения
-        console.log('[startListening] Запрашиваю getUserMedia для подтверждения разрешения...')
-        setStatus('🎤 Запрашиваю разрешение...')
-
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true
-          }
-        })
-
-        console.log('[startListening] getUserMedia успешно, останавливаю поток')
-        stream.getTracks().forEach(track => track.stop())
-
-        // Небольшая задержка перед запуском Web Speech API
-        await new Promise(resolve => setTimeout(resolve, 100))
-
-        // Теперь запускаем Web Speech API
-        console.log('[startListening] Вызываю recognition.start()...')
+        // Запускаем напрямую без getUserMedia - пусть Web Speech API сам управляет разрешениями
+        console.log('[startListening] Вызываю recognition.start() напрямую...')
         recognitionRef.current.start()
-        console.log('[Web Speech] start() вызван')
+        console.log('[Web Speech] start() вызван успешно')
+        setIsListening(true)
         setStatus('🎤 Запускаю...')
       } catch (error) {
-        console.error('[Web Speech] Ошибка запуска:', error)
+        console.error('[Web Speech] Ошибка при вызове start():', error)
         console.error('[Web Speech] Error name:', error.name)
         console.error('[Web Speech] Error message:', error.message)
 
         if (error.name === 'InvalidStateError') {
           console.log('[Web Speech] Уже запущен')
+          setIsListening(true)
           setStatus('🎤 Слушаю...')
-        } else if (error.name === 'NotAllowedError') {
-          setStatus('❌ Доступ к микрофону запрещён')
-          setIsListening(false)
-          alert('Доступ к микрофону запрещён.\n\nИнструкция:\n1. Нажмите на иконку замка в адресной строке\n2. Найдите "Микрофон"\n3. Выберите "Разрешить"\n4. Перезагрузите страницу\n5. Попробуйте снова')
         } else {
           setStatus(`❌ Ошибка: ${error.message}`)
           setIsListening(false)
-          alert(`Ошибка запуска распознавания: ${error.message}`)
+          alert(`Ошибка запуска: ${error.message}`)
         }
       }
     } else {
