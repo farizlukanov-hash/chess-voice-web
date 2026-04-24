@@ -108,7 +108,7 @@ function App() {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
         recognitionRef.current = new SpeechRecognition()
         recognitionRef.current.lang = 'ru-RU'
-        recognitionRef.current.continuous = false
+        recognitionRef.current.continuous = true  // ИЗМЕНЕНО: true для мобильных
         recognitionRef.current.interimResults = false
         recognitionRef.current.maxAlternatives = 1
 
@@ -174,17 +174,26 @@ function App() {
           console.log('[Web Speech] onend - Сессия завершена')
           console.log('[Web Speech] isListeningRef.current:', isListeningRef.current)
 
+          // С continuous: true не должно завершаться, но если завершилось - перезапускаем
           if (isListeningRef.current && recognitionRef.current) {
-            try {
-              console.log('[Web Speech] Перезапускаю...')
-              recognitionRef.current.start()
-              console.log('[Web Speech] Перезапущен успешно')
-            } catch (error) {
-              console.log('[Web Speech] Ошибка перезапуска:', error.message)
-              if (error.name === 'InvalidStateError') {
-                console.log('[Web Speech] Уже запущен, пропускаю')
+            console.log('[Web Speech] Неожиданное завершение, перезапускаю через 300мс...')
+            setTimeout(() => {
+              if (isListeningRef.current && recognitionRef.current) {
+                try {
+                  recognitionRef.current.start()
+                  console.log('[Web Speech] Перезапущен успешно')
+                } catch (error) {
+                  console.log('[Web Speech] Ошибка перезапуска:', error.message)
+                  if (error.name === 'InvalidStateError') {
+                    console.log('[Web Speech] Уже запущен, пропускаю')
+                  } else {
+                    console.error('[Web Speech] Критическая ошибка перезапуска:', error)
+                    setIsListening(false)
+                    setStatus('❌ Распознавание остановлено')
+                  }
+                }
               }
-            }
+            }, 300)
           } else {
             console.log('[Web Speech] НЕ перезапускаю (isListening=false)')
           }
