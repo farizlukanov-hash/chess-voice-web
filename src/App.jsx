@@ -185,7 +185,7 @@ function App() {
       }
 
       setFen(game.fen())
-      setStatus(`Противник: ${result.san}`)
+      setStatus(`Противник: ${result.san}. Думаю...`)
 
       // Проверка окончания игры
       if (game.isGameOver()) {
@@ -211,6 +211,8 @@ function App() {
   }
 
   const calculateBestMove = () => {
+    const currentFen = game.fen()
+
     if (!stockfishRef.current) {
       // Fallback: случайный ход
       const moves = game.moves()
@@ -223,7 +225,7 @@ function App() {
 
     setStatus('Думаю...')
 
-    stockfishRef.current.postMessage(`position fen ${game.fen()}`)
+    stockfishRef.current.postMessage(`position fen ${currentFen}`)
     stockfishRef.current.postMessage('go depth 15')
 
     const handleMessage = (event) => {
@@ -232,7 +234,7 @@ function App() {
         const bestMoveUCI = line.split(' ')[1]
 
         // Конвертируем UCI в SAN
-        const tempGame = new Chess(game.fen())
+        const tempGame = new Chess(currentFen)
         const moveObj = tempGame.move(bestMoveUCI, { sloppy: true })
 
         if (moveObj) {
@@ -252,10 +254,12 @@ function App() {
     setStatus(`✓ Твой ход: ${moveSAN}`)
     speak(`Ходи ${moveSAN}`)
 
-    // После подсказки автоматически включаем прослушивание для следующего хода противника
-    if (!continuousListening) {
-      setTimeout(() => startContinuousListening(), 3000)
-    }
+    // ВСЕГДА автоматически включаем прослушивание после подсказки
+    setTimeout(() => {
+      if (gameStarted && !continuousListening) {
+        startContinuousListening()
+      }
+    }, 3000)
   }
 
   const startGame = () => {
