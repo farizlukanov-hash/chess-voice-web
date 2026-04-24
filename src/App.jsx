@@ -159,6 +159,8 @@ function App() {
   }, [])
 
   const speak = (text) => {
+    console.log('[TTS] Попытка озвучить:', text)
+
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel()
 
@@ -168,14 +170,28 @@ function App() {
 
       // Пытаемся найти русский голос
       const voices = window.speechSynthesis.getVoices()
+      console.log('[TTS] Всего голосов:', voices.length)
+
       const russianVoice = voices.find(voice => voice.lang.startsWith('ru'))
       if (russianVoice) {
         utterance.voice = russianVoice
+        console.log('[TTS] Использую голос:', russianVoice.name)
+      } else {
+        console.log('[TTS] Русский голос не найден, использую дефолтный')
+      }
+
+      utterance.onstart = () => {
+        console.log('[TTS] Озвучка началась')
+      }
+
+      utterance.onend = () => {
+        console.log('[TTS] Озвучка завершена')
       }
 
       utterance.onerror = (event) => {
         // Игнорируем "interrupted" - это нормально когда новая озвучка начинается
         if (event.error === 'interrupted') {
+          console.log('[TTS] Озвучка прервана (это нормально)')
           return
         }
         console.error('[TTS] Ошибка озвучки:', event.error)
@@ -183,6 +199,7 @@ function App() {
       }
 
       window.speechSynthesis.speak(utterance)
+      console.log('[TTS] Команда speak() выполнена')
     } else {
       console.error('[TTS] Speech Synthesis не поддерживается')
       setStatus('❌ Ваш браузер не поддерживает озвучку. Используйте Chrome на Android или Safari на iOS')
@@ -534,6 +551,9 @@ function App() {
     lastMoveSpeechRef.current = ''
     lastOpponentMoveSpeechRef.current = ''
 
+    // Тестовая озвучка для активации TTS на мобильных
+    speak('Партия началась')
+
     // СРАЗУ запускаем прослушивание
     setIsListening(true)
     setTimeout(() => {
@@ -541,17 +561,19 @@ function App() {
         try {
           recognitionRef.current.start()
         } catch (e) {
-          console.log('[Микрофон] Ошибка запуска')
+          console.log('[Микрофон] Ошибка запуска:', e.message)
+          setStatus(`❌ Не удалось запустить микрофон: ${e.message}. Проверьте разрешения в браузере.`)
         }
+      } else {
+        setStatus('❌ Микрофон не инициализирован. Перезагрузите страницу.')
       }
-    }, 1500)
+    }, 2000) // Увеличил задержку для мобильных
 
     if (playingAsWhite) {
-      speak('Партия началась! Вы играете белыми.')
       // Подсказываем первый ход
-      setTimeout(() => makeMyFirstMove(), 2000)
+      setTimeout(() => makeMyFirstMove(), 3000)
     } else {
-      speak('Партия началась! Вы играете чёрными. Ждите хода противника.')
+      speak('Вы играете чёрными. Ждите хода противника.')
     }
   }
 
