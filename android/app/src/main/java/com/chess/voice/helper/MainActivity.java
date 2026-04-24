@@ -181,10 +181,18 @@ public class MainActivity extends BridgeActivity {
     }
 
     private void sendToJS(String event, String data) {
+        Log.d(TAG, "sendToJS called: event=" + event + ", data=" + data);
         runOnUiThread(() -> {
+            if (webView == null) {
+                Log.e(TAG, "WebView is null in sendToJS!");
+                return;
+            }
             String js = String.format("window.dispatchEvent(new CustomEvent('androidVoice', {detail: {event: '%s', data: '%s'}}))",
                     event, data.replace("'", "\\'"));
-            webView.evaluateJavascript(js, null);
+            Log.d(TAG, "Executing JS: " + js);
+            webView.evaluateJavascript(js, result -> {
+                Log.d(TAG, "JS executed, result: " + result);
+            });
         });
     }
 }

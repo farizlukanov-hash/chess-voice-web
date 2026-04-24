@@ -3,6 +3,7 @@ import ChessBoard from './components/ChessBoard'
 import Controls from './components/Controls'
 import StatusPanel from './components/StatusPanel'
 import MicrophoneTest from './components/MicrophoneTest'
+import InstallPrompt from './components/InstallPrompt'
 import { Chess } from 'chess.js'
 import { VoiceParser } from './utils/VoiceParser'
 import { TTSEngine } from './utils/TTSEngine'
@@ -815,6 +816,8 @@ function App() {
       {showMicTest && (
         <MicrophoneTest onClose={() => setShowMicTest(false)} />
       )}
+
+      <InstallPrompt />
     </div>
   )
 }
