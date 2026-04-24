@@ -105,6 +105,7 @@ function App() {
         }
 
         console.error('[Микрофон] Ошибка:', event.error)
+        setStatus(`❌ Ошибка микрофона: ${event.error}`)
       }
 
       recognitionRef.current.onend = () => {
@@ -116,6 +117,7 @@ function App() {
             console.log('[Микрофон] Перезапущен')
           } catch (e) {
             console.log('[Микрофон] Не удалось перезапустить:', e.message)
+            setStatus(`❌ Не удалось перезапустить: ${e.message}`)
             // Если не удалось - пробуем через 100ms
             setTimeout(() => {
               if (isListeningRef.current && recognitionRef.current) {
@@ -123,12 +125,16 @@ function App() {
                   recognitionRef.current.start()
                 } catch (err) {
                   console.log('[Микрофон] Повторная попытка не удалась')
+                  setStatus(`❌ Микрофон не работает: ${err.message}`)
                 }
               }
             }, 100)
           }
         }
       }
+    } else {
+      console.error('[Микрофон] Web Speech API не поддерживается')
+      setStatus('❌ Ваш браузер не поддерживает распознавание речи')
     }
   }, [])
 
@@ -138,7 +144,16 @@ function App() {
       const utterance = new SpeechSynthesisUtterance(text)
       utterance.lang = 'ru-RU'
       utterance.rate = 0.85
+
+      utterance.onerror = (event) => {
+        console.error('[TTS] Ошибка озвучки:', event.error)
+        setStatus(`❌ Ошибка озвучки: ${event.error}`)
+      }
+
       window.speechSynthesis.speak(utterance)
+    } else {
+      console.error('[TTS] Speech Synthesis не поддерживается')
+      setStatus('❌ Ваш браузер не поддерживает озвучку')
     }
   }
 
