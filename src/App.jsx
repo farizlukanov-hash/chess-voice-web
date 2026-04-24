@@ -258,6 +258,13 @@ function App() {
       console.log('[startListening] Использую Web Speech API')
 
       try {
+        // ВАЖНО: Запрашиваем разрешение на микрофон перед запуском распознавания
+        console.log('[startListening] Запрашиваю разрешение на микрофон...')
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        console.log('[startListening] Разрешение получено, останавливаю тестовый поток')
+        stream.getTracks().forEach(track => track.stop())
+
+        // Теперь запускаем распознавание
         recognitionRef.current.start()
         console.log('[Web Speech] Запущен успешно')
         setStatus('🎤 Слушаю...')
@@ -266,6 +273,9 @@ function App() {
         if (error.name === 'InvalidStateError') {
           console.log('[Web Speech] Уже запущен')
           setStatus('🎤 Слушаю...')
+        } else if (error.name === 'NotAllowedError') {
+          setStatus('❌ Доступ к микрофону запрещён. Разрешите в настройках браузера.')
+          setIsListening(false)
         } else {
           setStatus(`❌ Ошибка: ${error.message}`)
           setIsListening(false)
