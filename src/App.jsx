@@ -83,13 +83,20 @@ function App() {
 
   // Инициализация Web Speech API (ОДИН РАЗ)
   useEffect(() => {
+    console.log('[Инициализация] Проверяю поддержку Web Speech API...')
+    console.log('[Инициализация] webkitSpeechRecognition:', 'webkitSpeechRecognition' in window)
+    console.log('[Инициализация] SpeechRecognition:', 'SpeechRecognition' in window)
+
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      console.log('[Инициализация] Web Speech API поддерживается!')
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
       recognitionRef.current = new SpeechRecognition()
       recognitionRef.current.lang = 'ru-RU'
       recognitionRef.current.continuous = false  // Одна фраза за раз
       recognitionRef.current.interimResults = false
       recognitionRef.current.maxAlternatives = 1
+
+      console.log('[Инициализация] SpeechRecognition создан:', recognitionRef.current)
 
       recognitionRef.current.onstart = () => {
         console.log('[Микрофон] Слушаю...')
@@ -104,6 +111,7 @@ function App() {
       }
 
       recognitionRef.current.onerror = (event) => {
+        console.log('[Микрофон] Событие onerror:', event.error)
         // Игнорируем aborted и no-speech - это нормально
         if (event.error === 'aborted' || event.error === 'no-speech') {
           return
@@ -152,6 +160,8 @@ function App() {
           }
         }
       }
+
+      console.log('[Инициализация] Все обработчики установлены')
     } else {
       console.error('[Микрофон] Web Speech API не поддерживается')
       setStatus('❌ Ваш браузер не поддерживает распознавание речи')
@@ -549,8 +559,11 @@ function App() {
   }
 
   const startGame = async () => {
+    console.log('[startGame] Начинаю игру...')
+
     // Явно запрашиваем разрешение на микрофон (важно для мобильных)
     try {
+      console.log('[startGame] Запрашиваю разрешение на микрофон...')
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       console.log('[Микрофон] Разрешение получено')
       // Останавливаем поток - он нам не нужен, нужно только разрешение
@@ -572,29 +585,42 @@ function App() {
     lastMoveSpeechRef.current = ''
     lastOpponentMoveSpeechRef.current = ''
 
+    console.log('[startGame] Игра инициализирована')
+
     // Тестовая озвучка для активации TTS на мобильных
     speak('Партия началась')
 
     // СРАЗУ запускаем прослушивание
+    console.log('[startGame] Устанавливаю isListening = true')
     setIsListening(true)
+
     setTimeout(() => {
+      console.log('[startGame] Пытаюсь запустить микрофон...')
+      console.log('[startGame] recognitionRef.current:', recognitionRef.current)
+      console.log('[startGame] isListeningRef.current:', isListeningRef.current)
+
       if (recognitionRef.current) {
         try {
+          console.log('[startGame] Вызываю recognition.start()...')
           recognitionRef.current.start()
           console.log('[Микрофон] Запущен после получения разрешения')
         } catch (e) {
-          console.log('[Микрофон] Ошибка запуска:', e.message)
+          console.error('[Микрофон] Ошибка запуска:', e)
+          console.error('[Микрофон] Ошибка stack:', e.stack)
           setStatus(`❌ Не удалось запустить микрофон: ${e.message}. Проверьте разрешения в браузере.`)
         }
       } else {
+        console.error('[startGame] recognitionRef.current is null!')
         setStatus('❌ Микрофон не инициализирован. Перезагрузите страницу.')
       }
-    }, 2000) // Увеличил задержку для мобильных
+    }, 2000)
 
     if (playingAsWhite) {
+      console.log('[startGame] Играю за белых, делаю первый ход...')
       // Подсказываем первый ход
       setTimeout(() => makeMyFirstMove(), 3000)
     } else {
+      console.log('[startGame] Играю за чёрных')
       speak('Вы играете чёрными. Ждите хода противника.')
     }
   }
