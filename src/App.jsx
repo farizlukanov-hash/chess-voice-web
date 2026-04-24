@@ -563,14 +563,20 @@ function App() {
 
     // Явно запрашиваем разрешение на микрофон (важно для мобильных)
     try {
-      console.log('[startGame] Запрашиваю разрешение на микрофон...')
+      console.log('[startGame] Запрашиваю разрешение на микрофон через getUserMedia...')
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      console.log('[Микрофон] Разрешение получено')
+      console.log('[Микрофон] Разрешение getUserMedia получено, stream:', stream)
       // Останавливаем поток - он нам не нужен, нужно только разрешение
-      stream.getTracks().forEach(track => track.stop())
+      stream.getTracks().forEach(track => {
+        console.log('[Микрофон] Останавливаю track:', track.label)
+        track.stop()
+      })
+      console.log('[Микрофон] Все треки остановлены')
     } catch (error) {
-      console.error('[Микрофон] Не удалось получить разрешение:', error)
-      setStatus(`❌ Разрешите доступ к микрофону в настройках браузера`)
+      console.error('[Микрофон] Не удалось получить разрешение getUserMedia:', error)
+      console.error('[Микрофон] Error name:', error.name)
+      console.error('[Микрофон] Error message:', error.message)
+      setStatus(`❌ Разрешите доступ к микрофону в настройках браузера (${error.name})`)
       speak('Разрешите доступ к микрофону')
       return
     }
@@ -590,35 +596,40 @@ function App() {
     // Тестовая озвучка для активации TTS на мобильных
     speak('Партия началась')
 
-    // СРАЗУ запускаем прослушивание
-    console.log('[startGame] Устанавливаю isListening = true')
-    setIsListening(true)
-
+    // Ждём дольше перед запуском микрофона (важно для Android)
+    console.log('[startGame] Жду 3 секунды перед запуском микрофона...')
     setTimeout(() => {
-      console.log('[startGame] Пытаюсь запустить микрофон...')
-      console.log('[startGame] recognitionRef.current:', recognitionRef.current)
-      console.log('[startGame] isListeningRef.current:', isListeningRef.current)
+      console.log('[startGame] Устанавливаю isListening = true')
+      setIsListening(true)
 
-      if (recognitionRef.current) {
-        try {
-          console.log('[startGame] Вызываю recognition.start()...')
-          recognitionRef.current.start()
-          console.log('[Микрофон] Запущен после получения разрешения')
-        } catch (e) {
-          console.error('[Микрофон] Ошибка запуска:', e)
-          console.error('[Микрофон] Ошибка stack:', e.stack)
-          setStatus(`❌ Не удалось запустить микрофон: ${e.message}. Проверьте разрешения в браузере.`)
+      setTimeout(() => {
+        console.log('[startGame] Пытаюсь запустить микрофон...')
+        console.log('[startGame] recognitionRef.current:', recognitionRef.current)
+        console.log('[startGame] isListeningRef.current:', isListeningRef.current)
+
+        if (recognitionRef.current) {
+          try {
+            console.log('[startGame] Вызываю recognition.start()...')
+            recognitionRef.current.start()
+            console.log('[Микрофон] start() вызван успешно')
+          } catch (e) {
+            console.error('[Микрофон] Ошибка при вызове start():', e)
+            console.error('[Микрофон] Ошибка name:', e.name)
+            console.error('[Микрофон] Ошибка message:', e.message)
+            console.error('[Микрофон] Ошибка stack:', e.stack)
+            setStatus(`❌ Не удалось запустить микрофон: ${e.message}`)
+          }
+        } else {
+          console.error('[startGame] recognitionRef.current is null!')
+          setStatus('❌ Микрофон не инициализирован. Перезагрузите страницу.')
         }
-      } else {
-        console.error('[startGame] recognitionRef.current is null!')
-        setStatus('❌ Микрофон не инициализирован. Перезагрузите страницу.')
-      }
-    }, 2000)
+      }, 1000)
+    }, 3000)
 
     if (playingAsWhite) {
       console.log('[startGame] Играю за белых, делаю первый ход...')
       // Подсказываем первый ход
-      setTimeout(() => makeMyFirstMove(), 3000)
+      setTimeout(() => makeMyFirstMove(), 5000)
     } else {
       console.log('[startGame] Играю за чёрных')
       speak('Вы играете чёрными. Ждите хода противника.')
