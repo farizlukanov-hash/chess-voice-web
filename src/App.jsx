@@ -467,14 +467,18 @@ function App() {
 
   const undoMove = () => {
     const currentGame = gameRef.current
-    if (currentGame.history().length < 2) {
+    if (currentGame.history().length === 0) {
       setStatus('Нечего отменять')
       speak('Нечего отменять')
       return
     }
 
-    currentGame.undo() // Твой ход
-    currentGame.undo() // Ход противника
+    // Отменяем последний ход (или два хода если их было два)
+    currentGame.undo()
+    if (currentGame.history().length > 0) {
+      currentGame.undo()
+    }
+
     setGame(new Chess(currentGame.fen()))
     setFen(currentGame.fen())
     setStatus('Ход отменён')
