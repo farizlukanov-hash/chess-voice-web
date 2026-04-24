@@ -292,8 +292,31 @@ export class VoiceParser {
         }
       }
 
-      // Если нашли фигуру + горизонталь, пробуем найти подходящий ход
-      if (detectedPiece && detectedRank) {
+      // Ищем букву (вертикаль) - ВАЖНО проверить ДО угадывания
+      let detectedFile = null
+      for (const [fileName, fileSymbol] of Object.entries(this.files)) {
+        if (textLower.includes(fileName)) {
+          detectedFile = fileSymbol
+          break
+        }
+      }
+
+      // Если нашли фигуру + вертикаль + горизонталь, пробуем собрать ход
+      if (detectedPiece && detectedFile && detectedRank) {
+        const constructedMove = detectedPiece ? `${detectedPiece}${detectedFile}${detectedRank}` : `${detectedFile}${detectedRank}`
+
+        // Проверяем что такой ход легален
+        for (const move of legalMoves) {
+          const cleanMove = move.replace(/[x+#]/g, '')
+          if (cleanMove === constructedMove || cleanMove.endsWith(`${detectedFile}${detectedRank}`)) {
+            console.log(`[Parser] Собрал ход из частей: ${move} (фигура: ${detectedPiece}, вертикаль: ${detectedFile}, горизонталь: ${detectedRank})`)
+            return move
+          }
+        }
+      }
+
+      // Если нашли фигуру + горизонталь БЕЗ вертикали, пробуем найти подходящий ход
+      if (detectedPiece && detectedRank && !detectedFile) {
         for (const move of legalMoves) {
           const cleanMove = move.replace(/[x+#]/g, '')
 
