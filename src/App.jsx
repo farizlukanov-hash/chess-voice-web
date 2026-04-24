@@ -49,7 +49,7 @@ function App() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
       recognitionRef.current = new SpeechRecognition()
       recognitionRef.current.lang = 'ru-RU'
-      recognitionRef.current.continuous = true
+      recognitionRef.current.continuous = false
       recognitionRef.current.interimResults = false
       recognitionRef.current.maxAlternatives = 1
 
@@ -66,32 +66,28 @@ function App() {
 
       recognitionRef.current.onerror = (event) => {
         console.error('[Микрофон] Ошибка:', event.error)
-        // Игнорируем ошибки "no-speech" - это нормально
+        // Игнорируем no-speech - это нормально
         if (event.error === 'no-speech') {
-          console.log('[Микрофон] Тишина, продолжаю слушать')
-          return
+          console.log('[Микрофон] Тишина, перезапускаю')
         }
-        // При других ошибках тоже не останавливаем
       }
 
       recognitionRef.current.onend = () => {
-        console.log('[Микрофон] Сессия завершена')
-        // Перезапускаем только если игра активна и слушаем
-        if (gameStarted && isListening) {
-          console.log('[Микрофон] Перезапускаю...')
-          setTimeout(() => {
-            if (recognitionRef.current && isListening) {
-              try {
-                recognitionRef.current.start()
-              } catch (e) {
-                console.log('[Микрофон] Ошибка перезапуска:', e.message)
-              }
+        console.log('[Микрофон] Сессия завершена, перезапускаю через 500ms')
+        // ВСЕГДА перезапускаем если игра активна
+        setTimeout(() => {
+          if (isListening && gameStarted && recognitionRef.current) {
+            try {
+              recognitionRef.current.start()
+              console.log('[Микрофон] Перезапущен')
+            } catch (e) {
+              console.error('[Микрофон] Ошибка перезапуска:', e.message)
             }
-          }, 300)
-        }
+          }
+        }, 500)
       }
     }
-  }, [gameStarted, isListening])
+  }, [isListening, gameStarted])
 
   const speak = (text) => {
     if ('speechSynthesis' in window) {
