@@ -21,7 +21,12 @@ function App() {
   const stockfishRef = useRef(null)
   const parserRef = useRef(new VoiceParser())
   const ttsRef = useRef(new TTSEngine())
-  const listeningLoopRef = useRef(false)
+  const gameRef = useRef(game)
+
+  // Синхронизируем gameRef с game
+  useEffect(() => {
+    gameRef.current = game
+  }, [game])
 
   // Инициализация Stockfish
   useEffect(() => {
@@ -49,7 +54,7 @@ function App() {
 
       recognitionRef.current.onstart = () => {
         console.log('[Микрофон] Слушаю...')
-        setStatus('>>> ГОВОРИ СЕЙЧАС! <<<')
+        setStatus('🎤 Слушаю...')
       }
 
       recognitionRef.current.onresult = (event) => {
@@ -60,17 +65,15 @@ function App() {
 
       recognitionRef.current.onerror = (event) => {
         console.error('[Микрофон] Ошибка:', event.error)
-        if (event.error !== 'no-speech' && event.error !== 'aborted') {
-          setIsListening(false)
-        }
+        // Не останавливаем прослушивание при ошибках
       }
 
       recognitionRef.current.onend = () => {
         console.log('[Микрофон] Запись завершена')
-        // Автоматически перезапускаем ВСЕГДА если игра активна
-        if (gameStarted && listeningLoopRef.current) {
+        // ВСЕГДА перезапускаем если игра активна
+        if (gameStarted && isListening) {
           setTimeout(() => {
-            if (listeningLoopRef.current && recognitionRef.current) {
+            if (recognitionRef.current && isListening) {
               try {
                 recognitionRef.current.start()
               } catch (e) {
@@ -78,12 +81,10 @@ function App() {
               }
             }
           }, 100)
-        } else {
-          setIsListening(false)
         }
       }
     }
-  }, [gameStarted])
+  }, [gameStarted, isListening])
 
   const speak = (text) => {
     if ('speechSynthesis' in window) {
@@ -92,28 +93,6 @@ function App() {
       utterance.lang = 'ru-RU'
       utterance.rate = 0.85
       window.speechSynthesis.speak(utterance)
-    }
-  }
-
-  const startListeningLoop = () => {
-    if (!recognitionRef.current) return
-
-    listeningLoopRef.current = true
-    setIsListening(true)
-    setStatus('🎤 Слушаю постоянно...')
-
-    try {
-      recognitionRef.current.start()
-    } catch (error) {
-      console.error('[Микрофон] Ошибка запуска:', error)
-    }
-  }
-
-  const stopListeningLoop = () => {
-    listeningLoopRef.current = false
-    setIsListening(false)
-    if (recognitionRef.current) {
-      recognitionRef.current.stop()
     }
   }
 
@@ -138,7 +117,7 @@ function App() {
     }
 
     // Парсим ход противника
-    const legalMoves = game.moves()
+    const legalMoves = gameRef.current.moves()
     const parsedMove = parserRef.current.parseWithContext(text, legalMoves, true)
 
     if (!parsedMove) {
@@ -153,47 +132,50 @@ function App() {
       return
     }
 
-    // Делаем ход противника
+    // Обрабатываем ход (как в декстопе: ход противника + твой ход)
     processOpponentMove(parsedMove)
   }
 
-  const processOpponentMove = (move) => {
+  const processOpponentMove = (opponentMove) => {
     try {
-      // 1. Делаем ход противника НА ДОСКЕ
-      const opponentResult = game.move(move)
+      const currentGame = gameRef.current
+
+      // 1. Делаем ход противника
+      const opponentResult = currentGame.move(opponentMove)
       if (!opponentResult) {
         setStatus('Недопустимый ход')
         speak('Недопустимый ход')
         return
       }
 
-      setFen(game.fen())
       console.log('[DEBUG] Ход противника:', opponentResult.san)
+      setGame(new Chess(currentGame.fen()))
+      setFen(currentGame.fen())
 
-      // Проверка окончания
-      if (game.isGameOver()) {
+      // Проверка окончания после хода противника
+      if (currentGame.isGameOver()) {
         handleGameOver()
         return
       }
 
       // 2. Вычисляем ТВОЙ лучший ход
       setStatus('Думаю...')
-      calculateBestMove()
+      calculateBestMoveAndMake(currentGame)
     } catch (error) {
       console.error('[Ошибка]:', error)
       setStatus('Ошибка хода')
     }
   }
 
-  const calculateBestMove = () => {
-    const currentFen = game.fen()
+  const calculateBestMoveAndMake = (currentGame) => {
+    const currentFen = currentGame.fen()
 
     if (!stockfishRef.current) {
       // Fallback: случайный ход
-      const moves = game.moves()
+      const moves = currentGame.moves()
       if (moves.length > 0) {
         const randomMove = moves[Math.floor(Math.random() * moves.length)]
-        makeMyMove(randomMove)
+        makeMyMove(currentGame, randomMove)
       }
       return
     }
@@ -207,11 +189,29 @@ function App() {
         const bestMoveUCI = line.split(' ')[1]
 
         // Конвертируем UCI в SAN
-        const tempGame = new Chess(currentFen)
-        const moveObj = tempGame.move(bestMoveUCI, { sloppy: true })
+        const moveObj = currentGame.move(bestMoveUCI, { sloppy: true })
 
         if (moveObj) {
-          makeMyMove(moveObj.san)
+          // Обновляем состояние с новой позицией
+          setGame(new Chess(currentGame.fen()))
+          setFen(currentGame.fen())
+
+          // Конвертируем в речь
+          const speechText = ttsRef.current.moveToSpeech(moveObj.san)
+
+          setLastMove(moveObj.san)
+          setLastMoveSpeech(speechText)
+          setStatus(`✓ Ход обработан`)
+
+          // Озвучиваем
+          speak(`Ходи ${speechText}`)
+
+          console.log('[DEBUG] Мой ход:', moveObj.san, '-> Речь:', speechText)
+
+          // Проверка окончания
+          if (currentGame.isGameOver()) {
+            handleGameOver()
+          }
         }
 
         stockfishRef.current.removeEventListener('message', handleMessage)
@@ -221,40 +221,67 @@ function App() {
     stockfishRef.current.addEventListener('message', handleMessage)
   }
 
-  const makeMyMove = (moveSAN) => {
-    // 3. Делаем ТВОЙ ход НА ДОСКЕ
-    const myResult = game.move(moveSAN)
-    if (!myResult) {
-      console.error('[Ошибка] Не удалось сделать мой ход:', moveSAN)
+  const makeMyFirstMove = () => {
+    const currentGame = gameRef.current
+    const currentFen = currentGame.fen()
+
+    if (!stockfishRef.current) {
+      // Fallback
+      const moves = currentGame.moves()
+      if (moves.length > 0) {
+        const randomMove = moves[Math.floor(Math.random() * moves.length)]
+        const moveObj = currentGame.move(randomMove)
+        if (moveObj) {
+          setGame(new Chess(currentGame.fen()))
+          setFen(currentGame.fen())
+          const speechText = ttsRef.current.moveToSpeech(moveObj.san)
+          setLastMoveSpeech(speechText)
+          speak(`Партия началась. Ходи ${speechText}`)
+        }
+      }
       return
     }
 
-    setFen(game.fen())
+    stockfishRef.current.postMessage(`position fen ${currentFen}`)
+    stockfishRef.current.postMessage('go depth 15')
 
-    // Конвертируем в речь
-    const speechText = ttsRef.current.moveToSpeech(myResult.san)
+    const handleMessage = (event) => {
+      const line = event.data
+      if (typeof line === 'string' && line.startsWith('bestmove')) {
+        const bestMoveUCI = line.split(' ')[1]
 
-    setLastMove(myResult.san)
-    setLastMoveSpeech(speechText)
-    setStatus(`✓ Ход обработан`)
+        const moveObj = currentGame.move(bestMoveUCI, { sloppy: true })
 
-    // 4. Озвучиваем
-    speak(`Ходи ${speechText}`)
+        if (moveObj) {
+          setGame(new Chess(currentGame.fen()))
+          setFen(currentGame.fen())
 
-    console.log('[DEBUG] Мой ход:', myResult.san, '-> Речь:', speechText)
+          const speechText = ttsRef.current.moveToSpeech(moveObj.san)
+          setLastMove(moveObj.san)
+          setLastMoveSpeech(speechText)
 
-    // Проверка окончания
-    if (game.isGameOver()) {
-      handleGameOver()
+          speak(`Партия началась. Ходи ${speechText}`)
+          console.log('[DEBUG] Первый ход:', moveObj.san, '-> Речь:', speechText)
+        }
+
+        stockfishRef.current.removeEventListener('message', handleMessage)
+      }
     }
+
+    stockfishRef.current.addEventListener('message', handleMessage)
   }
 
   const handleGameOver = () => {
-    stopListeningLoop()
-    if (game.isCheckmate()) {
+    setIsListening(false)
+    if (recognitionRef.current) {
+      recognitionRef.current.stop()
+    }
+
+    const currentGame = gameRef.current
+    if (currentGame.isCheckmate()) {
       setStatus('Мат! Игра окончена.')
       speak('Мат! Игра окончена.')
-    } else if (game.isDraw()) {
+    } else if (currentGame.isDraw()) {
       setStatus('Ничья!')
       speak('Ничья!')
     }
@@ -263,46 +290,58 @@ function App() {
   const startGame = () => {
     const newGame = new Chess()
     setGame(newGame)
+    gameRef.current = newGame
     setFen(newGame.fen())
     setGameStarted(true)
     setLastMove('')
     setLastMoveSpeech('')
 
+    // СРАЗУ запускаем прослушивание
+    setIsListening(true)
+    setTimeout(() => {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.start()
+        } catch (e) {
+          console.log('[Микрофон] Ошибка запуска')
+        }
+      }
+    }, 1500)
+
     if (playingAsWhite) {
-      const message = 'Партия началась! Вы играете белыми.'
-      setStatus(message)
-      speak(message)
-      // СРАЗУ запускаем прослушивание
-      setTimeout(() => startListeningLoop(), 1500)
+      speak('Партия началась! Вы играете белыми.')
       // Подсказываем первый ход
-      setTimeout(() => calculateBestMove(), 2000)
+      setTimeout(() => makeMyFirstMove(), 2000)
     } else {
-      const message = 'Партия началась! Вы играете чёрными. Ждите хода противника.'
-      setStatus(message)
-      speak(message)
-      // СРАЗУ запускаем прослушивание
-      setTimeout(() => startListeningLoop(), 1500)
+      speak('Партия началась! Вы играете чёрными. Ждите хода противника.')
     }
   }
 
   const undoMove = () => {
-    if (game.history().length < 2) {
+    const currentGame = gameRef.current
+    if (currentGame.history().length < 2) {
       setStatus('Нечего отменять')
       speak('Нечего отменять')
       return
     }
 
-    game.undo() // Твой ход
-    game.undo() // Ход противника
-    setFen(game.fen())
+    currentGame.undo() // Твой ход
+    currentGame.undo() // Ход противника
+    setGame(new Chess(currentGame.fen()))
+    setFen(currentGame.fen())
     setStatus('Ход отменён')
     speak('Ход отменён')
   }
 
   const restartGame = () => {
-    stopListeningLoop()
+    setIsListening(false)
+    if (recognitionRef.current) {
+      recognitionRef.current.stop()
+    }
+
     const newGame = new Chess()
     setGame(newGame)
+    gameRef.current = newGame
     setFen(newGame.fen())
     setGameStarted(false)
     setLastMove('')
