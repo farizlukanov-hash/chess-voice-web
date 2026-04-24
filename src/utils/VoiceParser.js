@@ -4,6 +4,9 @@ export class VoiceParser {
     // Словарь фигур (с окончаниями для падежей)
     this.pieces = {
       'пешка': '',
+      'пешкой': '',
+      'пешку': '',
+      'пешки': '',
       'конь': 'N',
       'кони': 'N',
       'коней': 'N',
@@ -27,7 +30,11 @@ export class VoiceParser {
       'ферзи': 'Q',
       'ферзей': 'Q',
       'королева': 'Q',
+      'королеву': 'Q',
+      'королевой': 'Q',
       'дама': 'Q',
+      'даму': 'Q',
+      'дамой': 'Q',
       'ферзе': 'Q',
       'ферзём': 'Q',
       'ферзем': 'Q',
@@ -150,6 +157,8 @@ export class VoiceParser {
 
     // Убираем окончания
     text = text.replace(/пешкой/g, 'пешка')
+    text = text.replace(/пешку/g, 'пешка')
+    text = text.replace(/пешки/g, 'пешка')
     text = text.replace(/конём/g, 'конь')
     text = text.replace(/конем/g, 'конь')
     text = text.replace(/кони/g, 'конь')
@@ -168,6 +177,10 @@ export class VoiceParser {
     text = text.replace(/королём/g, 'король')
     text = text.replace(/королем/g, 'король')
     text = text.replace(/короля/g, 'король')
+    text = text.replace(/королеву/g, 'королева')
+    text = text.replace(/королевой/g, 'королева')
+    text = text.replace(/даму/g, 'дама')
+    text = text.replace(/дамой/g, 'дама')
 
     // Убираем слова-паразиты
     const noiseWords = [
