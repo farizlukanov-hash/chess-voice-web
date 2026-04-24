@@ -69,24 +69,14 @@ function App() {
       recognitionRef.current.interimResults = false
       recognitionRef.current.maxAlternatives = 1
 
-      recognitionRef.current.onstart = () => {
-        sessionStartTimeRef.current = Date.now()
-        console.log('[Микрофон] Слушаю... (сессия на 7 секунд)')
-        setStatus('🎤 Слушаю...')
+      // ВАЖНО: Увеличиваем паузы чтобы не останавливался
+      if (recognitionRef.current.hasOwnProperty('pauseThreshold')) {
+        recognitionRef.current.pauseThreshold = 10  // Не останавливаться при паузе до 10 сек
+      }
 
-        // Автоматически останавливаем через 7 секунд
-        setTimeout(() => {
-          if (recognitionRef.current && sessionStartTimeRef.current) {
-            const elapsed = Date.now() - sessionStartTimeRef.current
-            if (elapsed >= 6500) { // Останавливаем через 7 сек
-              try {
-                recognitionRef.current.stop()
-              } catch (e) {
-                console.log('[Микрофон] Уже остановлен')
-              }
-            }
-          }
-        }, 7000)
+      recognitionRef.current.onstart = () => {
+        console.log('[Микрофон] Слушаю...')
+        setStatus('🎤 Слушаю...')
       }
 
       recognitionRef.current.onresult = (event) => {
