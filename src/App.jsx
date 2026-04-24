@@ -22,11 +22,17 @@ function App() {
   const parserRef = useRef(new VoiceParser())
   const ttsRef = useRef(new TTSEngine())
   const gameRef = useRef(game)
+  const isListeningRef = useRef(false)
 
   // Синхронизируем gameRef с game
   useEffect(() => {
     gameRef.current = game
   }, [game])
+
+  // Синхронизируем isListeningRef с isListening
+  useEffect(() => {
+    isListeningRef.current = isListening
+  }, [isListening])
 
   // Инициализация Stockfish
   useEffect(() => {
@@ -43,7 +49,7 @@ function App() {
     initStockfish()
   }, [])
 
-  // Инициализация Web Speech API
+  // Инициализация Web Speech API (ОДИН РАЗ)
   useEffect(() => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
@@ -66,28 +72,38 @@ function App() {
 
       recognitionRef.current.onerror = (event) => {
         console.error('[Микрофон] Ошибка:', event.error)
-        // Игнорируем no-speech - это нормально
-        if (event.error === 'no-speech') {
-          console.log('[Микрофон] Тишина, перезапускаю')
-        }
       }
 
       recognitionRef.current.onend = () => {
-        console.log('[Микрофон] Сессия завершена, перезапускаю через 500ms')
-        // ВСЕГДА перезапускаем если игра активна
+        console.log('[Микрофон] Сессия завершена')
+        // Проверяем флаг через ref
         setTimeout(() => {
-          if (isListening && gameStarted && recognitionRef.current) {
+          if (isListeningRef.current && recognitionRef.current) {
             try {
               recognitionRef.current.start()
               console.log('[Микрофон] Перезапущен')
             } catch (e) {
-              console.error('[Микрофон] Ошибка перезапуска:', e.message)
+              console.log('[Микрофон] Не удалось перезапустить:', e.message)
+              // Если не удалось - пробуем ещё раз через секунду
+              if (isListeningRef.current) {
+                setTimeout(() => {
+                  if (isListeningRef.current && recognitionRef.current) {
+                    try {
+                      recognitionRef.current.start()
+                    } catch (err) {
+                      console.log('[Микрофон] Повторная попытка не удалась')
+                    }
+                  }
+                }, 1000)
+              }
             }
+          } else {
+            console.log('[Микрофон] Не перезапускаю - isListening =', isListeningRef.current)
           }
-        }, 500)
+        }, 1000)
       }
     }
-  }, [isListening, gameStarted])
+  }, [])
 
   const speak = (text) => {
     if ('speechSynthesis' in window) {
