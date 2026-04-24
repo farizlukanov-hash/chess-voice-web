@@ -59,6 +59,26 @@ function App() {
       }
     }
     initStockfish()
+
+    // Загружаем голоса для TTS (важно для мобильных устройств)
+    if ('speechSynthesis' in window) {
+      const loadVoices = () => {
+        const voices = window.speechSynthesis.getVoices()
+        console.log('[TTS] Доступные голоса:', voices.length)
+        voices.forEach(voice => {
+          if (voice.lang.startsWith('ru')) {
+            console.log('[TTS] Русский голос:', voice.name, voice.lang)
+          }
+        })
+      }
+
+      // Голоса могут загружаться асинхронно
+      if (window.speechSynthesis.getVoices().length > 0) {
+        loadVoices()
+      } else {
+        window.speechSynthesis.onvoiceschanged = loadVoices
+      }
+    }
   }, [])
 
   // Инициализация Web Speech API (ОДИН РАЗ)
@@ -141,9 +161,17 @@ function App() {
   const speak = (text) => {
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel()
+
       const utterance = new SpeechSynthesisUtterance(text)
       utterance.lang = 'ru-RU'
       utterance.rate = 0.85
+
+      // Пытаемся найти русский голос
+      const voices = window.speechSynthesis.getVoices()
+      const russianVoice = voices.find(voice => voice.lang.startsWith('ru'))
+      if (russianVoice) {
+        utterance.voice = russianVoice
+      }
 
       utterance.onerror = (event) => {
         // Игнорируем "interrupted" - это нормально когда новая озвучка начинается
@@ -157,7 +185,7 @@ function App() {
       window.speechSynthesis.speak(utterance)
     } else {
       console.error('[TTS] Speech Synthesis не поддерживается')
-      setStatus('❌ Ваш браузер не поддерживает озвучку')
+      setStatus('❌ Ваш браузер не поддерживает озвучку. Используйте Chrome на Android или Safari на iOS')
     }
   }
 
