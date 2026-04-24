@@ -4,6 +4,7 @@ import Controls from './components/Controls'
 import StatusPanel from './components/StatusPanel'
 import { Chess } from 'chess.js'
 import { VoiceParser } from './utils/VoiceParser'
+import { TTSEngine } from './utils/TTSEngine'
 import './App.css'
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
   const recognitionRef = useRef(null)
   const stockfishRef = useRef(null)
   const parserRef = useRef(new VoiceParser())
+  const ttsRef = useRef(new TTSEngine())
   const listeningLoopRef = useRef(false)
 
   // Инициализация Stockfish
@@ -65,8 +67,8 @@ function App() {
 
       recognitionRef.current.onend = () => {
         console.log('[Микрофон] Запись завершена')
-        // Автоматически перезапускаем если игра активна
-        if (listeningLoopRef.current && gameStarted) {
+        // Автоматически перезапускаем ВСЕГДА если игра активна
+        if (gameStarted && listeningLoopRef.current) {
           setTimeout(() => {
             if (listeningLoopRef.current && recognitionRef.current) {
               try {
@@ -228,14 +230,18 @@ function App() {
     }
 
     setFen(game.fen())
+
+    // Конвертируем в речь
+    const speechText = ttsRef.current.moveToSpeech(myResult.san)
+
     setLastMove(myResult.san)
-    setLastMoveSpeech(myResult.san)
+    setLastMoveSpeech(speechText)
     setStatus(`✓ Ход обработан`)
 
     // 4. Озвучиваем
-    speak(`Ходи ${myResult.san}`)
+    speak(`Ходи ${speechText}`)
 
-    console.log('[DEBUG] Мой ход:', myResult.san)
+    console.log('[DEBUG] Мой ход:', myResult.san, '-> Речь:', speechText)
 
     // Проверка окончания
     if (game.isGameOver()) {
@@ -266,16 +272,16 @@ function App() {
       const message = 'Партия началась! Вы играете белыми.'
       setStatus(message)
       speak(message)
+      // СРАЗУ запускаем прослушивание
+      setTimeout(() => startListeningLoop(), 1500)
       // Подсказываем первый ход
-      setTimeout(() => calculateBestMove(), 1500)
-      // Запускаем прослушивание
-      setTimeout(() => startListeningLoop(), 3000)
+      setTimeout(() => calculateBestMove(), 2000)
     } else {
       const message = 'Партия началась! Вы играете чёрными. Ждите хода противника.'
       setStatus(message)
       speak(message)
-      // Сразу запускаем прослушивание
-      setTimeout(() => startListeningLoop(), 2000)
+      // СРАЗУ запускаем прослушивание
+      setTimeout(() => startListeningLoop(), 1500)
     }
   }
 
