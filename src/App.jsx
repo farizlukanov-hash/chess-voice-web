@@ -34,12 +34,12 @@ function App() {
     isListeningRef.current = isListening
   }, [isListening])
 
-  // Инициализация Stockfish через CDN
+  // Инициализация Stockfish через локальный Worker
   useEffect(() => {
     const initStockfish = () => {
       try {
-        // Используем Stockfish через CDN
-        const worker = new Worker('https://cdn.jsdelivr.net/npm/stockfish.js@10.0.2/stockfish.js')
+        // Используем локальный Worker файл
+        const worker = new Worker('/stockfish-worker.js')
         stockfishRef.current = worker
 
         worker.onmessage = (event) => {
@@ -50,7 +50,7 @@ function App() {
         }
 
         worker.postMessage('uci')
-        console.log('[Stockfish] Загружаю из CDN...')
+        console.log('[Stockfish] Загружаю через Worker...')
       } catch (error) {
         console.error('[Stockfish] Ошибка загрузки:', error)
       }
@@ -84,8 +84,8 @@ function App() {
       }
 
       recognitionRef.current.onend = () => {
-        console.log('[Микрофон] Сессия завершена')
-        // Проверяем флаг через ref
+        console.log('[Микрофон] Сессия завершена, перезапускаю через 500ms')
+        // Перезапускаем через 500ms если слушаем
         setTimeout(() => {
           if (isListeningRef.current && recognitionRef.current) {
             try {
@@ -93,23 +93,9 @@ function App() {
               console.log('[Микрофон] Перезапущен')
             } catch (e) {
               console.log('[Микрофон] Не удалось перезапустить:', e.message)
-              // Если не удалось - пробуем ещё раз через секунду
-              if (isListeningRef.current) {
-                setTimeout(() => {
-                  if (isListeningRef.current && recognitionRef.current) {
-                    try {
-                      recognitionRef.current.start()
-                    } catch (err) {
-                      console.log('[Микрофон] Повторная попытка не удалась')
-                    }
-                  }
-                }, 1000)
-              }
             }
-          } else {
-            console.log('[Микрофон] Не перезапускаю - isListening =', isListeningRef.current)
           }
-        }, 1000)
+        }, 500)
       }
     }
   }, [])
@@ -329,69 +315,6 @@ function App() {
 
     const handleMessage = (event) => {
       const msg = event.data
-      console.log('[Stockfish] Ответ:', msg)
-
-      if (typeof msg === 'string' && msg.startsWith('bestmove') && !responded) {
-        responded = true
-        const bestMoveUCI = msg.split(' ')[1]
-        console.log('[Stockfish] Первый ход UCI:', bestMoveUCI)
-
-        const moveObj = currentGame.move(bestMoveUCI, { sloppy: true })
-
-        if (moveObj) {
-          setGame(new Chess(currentGame.fen()))
-          setFen(currentGame.fen())
-
-          const speechText = ttsRef.current.moveToSpeech(moveObj.san)
-          setLastMove(moveObj.san)
-          setLastMoveSpeech(speechText)
-          setStatus('✓ Готов')
-
-          speak(`Ходи ${speechText}`)
-          console.log('[DEBUG] Первый ход:', moveObj.san, '-> Речь:', speechText)
-        }
-
-        stockfishRef.current.onmessage = null
-      }
-    }
-
-    stockfishRef.current.onmessage = handleMessage
-
-    // Таймаут
-    setTimeout(() => {
-      if (!responded) {
-        console.log('[Stockfish] ТАЙМАУТ на первом ходе - используем fallback')
-        stockfishRef.current.onmessage = null
-        const moves = currentGame.moves()
-        if (moves.length > 0) {
-          const randomMove = moves[Math.floor(Math.random() * moves.length)]
-          const moveObj = currentGame.move(randomMove)
-          if (moveObj) {
-            setGame(new Chess(currentGame.fen()))
-            setFen(currentGame.fen())
-            const speechText = ttsRef.current.moveToSpeech(moveObj.san)
-            setLastMove(moveObj.san)
-            setLastMoveSpeech(speechText)
-            setStatus('✓ Готов')
-            speak(`Ходи ${speechText}`)
-            console.log('[DEBUG] Первый ход (timeout fallback):', moveObj.san, '-> Речь:', speechText)
-          }
-        }
-      }
-    }, 5000)
-  }
-        }
-      }
-      return
-    }
-
-    console.log('[Stockfish] Отправляю начальную позицию:', currentFen)
-    stockfishRef.current.postMessage(`position fen ${currentFen}`)
-    stockfishRef.current.postMessage('go movetime 2000')
-
-    let responded = false
-
-    const handleMessage = (msg) => {
       console.log('[Stockfish] Ответ:', msg)
 
       if (typeof msg === 'string' && msg.startsWith('bestmove') && !responded) {
