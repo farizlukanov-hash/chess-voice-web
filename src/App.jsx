@@ -251,6 +251,11 @@ function App() {
     setLastMoveSpeech(moveSAN)
     setStatus(`✓ Твой ход: ${moveSAN}`)
     speak(`Ходи ${moveSAN}`)
+
+    // После подсказки автоматически включаем прослушивание для следующего хода противника
+    if (!continuousListening) {
+      setTimeout(() => startContinuousListening(), 3000)
+    }
   }
 
   const startGame = () => {
@@ -261,18 +266,17 @@ function App() {
     setLastMove('')
     setLastMoveSpeech('')
 
-    const message = playingAsWhite
-      ? 'Партия началась! Вы играете белыми. Ждите хода противника и говорите его вслух.'
-      : 'Партия началась! Вы играете чёрными. Сейчас подскажу ваш первый ход.'
-
-    setStatus(message)
-    speak(message)
-
-    // Если играем чёрными - сразу подсказываем первый ход
-    if (!playingAsWhite) {
-      setTimeout(() => calculateBestMove(), 1000)
+    if (playingAsWhite) {
+      // Играем белыми - подсказываем НАШИ первый ход
+      const message = 'Партия началась! Вы играете белыми. Сейчас подскажу ваш первый ход.'
+      setStatus(message)
+      speak(message)
+      setTimeout(() => calculateBestMove(), 1500)
     } else {
-      // Если белыми - запускаем постоянное прослушивание
+      // Играем чёрными - ждём хода противника
+      const message = 'Партия началась! Вы играете чёрными. Ждите хода противника и говорите его вслух.'
+      setStatus(message)
+      speak(message)
       setTimeout(() => startContinuousListening(), 2000)
     }
   }
