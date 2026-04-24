@@ -286,7 +286,25 @@ function App() {
       console.log('[startListening] Использую Web Speech API')
 
       try {
-        // Просто запускаем - Web Speech API сам запросит разрешение
+        // ВАЖНО: Сначала запрашиваем getUserMedia для гарантии разрешения
+        console.log('[startListening] Запрашиваю getUserMedia для подтверждения разрешения...')
+        setStatus('🎤 Запрашиваю разрешение...')
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
+        })
+
+        console.log('[startListening] getUserMedia успешно, останавливаю поток')
+        stream.getTracks().forEach(track => track.stop())
+
+        // Небольшая задержка перед запуском Web Speech API
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        // Теперь запускаем Web Speech API
         console.log('[startListening] Вызываю recognition.start()...')
         recognitionRef.current.start()
         console.log('[Web Speech] start() вызван')
@@ -300,9 +318,9 @@ function App() {
           console.log('[Web Speech] Уже запущен')
           setStatus('🎤 Слушаю...')
         } else if (error.name === 'NotAllowedError') {
-          setStatus('❌ Доступ к микрофону запрещён. Разрешите в настройках браузера.')
+          setStatus('❌ Доступ к микрофону запрещён')
           setIsListening(false)
-          alert('Доступ к микрофону запрещён. Проверьте настройки браузера и разрешите доступ к микрофону для этого сайта.')
+          alert('Доступ к микрофону запрещён.\n\nИнструкция:\n1. Нажмите на иконку замка в адресной строке\n2. Найдите "Микрофон"\n3. Выберите "Разрешить"\n4. Перезагрузите страницу\n5. Попробуйте снова')
         } else {
           setStatus(`❌ Ошибка: ${error.message}`)
           setIsListening(false)
