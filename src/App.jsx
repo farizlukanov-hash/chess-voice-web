@@ -8,6 +8,7 @@ import { Chess } from 'chess.js'
 import { VoiceParser } from './utils/VoiceParser'
 import { TTSEngine } from './utils/TTSEngine'
 import { NativeVoiceRecognition } from './utils/NativeVoice'
+import { VoskVoiceRecognition } from './utils/VoskVoice'
 import { Capacitor } from '@capacitor/core'
 import './App.css'
 
@@ -25,6 +26,7 @@ function App() {
 
   const recognitionRef = useRef(null)
   const nativeVoiceRef = useRef(null)
+  const voskRef = useRef(null)
   const stockfishRef = useRef(null)
   const parserRef = useRef(new VoiceParser())
   const ttsRef = useRef(new TTSEngine())
@@ -34,8 +36,10 @@ function App() {
   const lastMoveSpeechRef = useRef('')
   const lastOpponentMoveSpeechRef = useRef('')
   const isNative = Capacitor.isNativePlatform()
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
 
   console.log('[App] Инициализация, isNative:', isNative)
+  console.log('[App] isMobile:', isMobile)
   console.log('[App] Capacitor.isNativePlatform():', Capacitor.isNativePlatform())
   console.log('[App] webkitSpeechRecognition доступен:', 'webkitSpeechRecognition' in window)
   console.log('[App] SpeechRecognition доступен:', 'SpeechRecognition' in window)
@@ -97,19 +101,23 @@ function App() {
   // Инициализация нативного распознавания (ОДИН РАЗ)
   useEffect(() => {
     console.log('[Инициализация] Платформа:', isNative ? 'Native' : 'Web')
+    console.log('[Инициализация] Мобильное устройство:', isMobile)
 
     if (isNative) {
       console.log('[Инициализация] Использую нативное Android распознавание')
       nativeVoiceRef.current = new NativeVoiceRecognition()
+    } else if (isMobile) {
+      console.log('[Инициализация] Мобильный браузер - использую Vosk (офлайн)')
+      voskRef.current = new VoskVoiceRecognition()
     } else {
-      console.log('[Инициализация] Использую Web Speech API для браузера')
+      console.log('[Инициализация] Десктоп - использую Web Speech API')
 
-      // Инициализируем Web Speech API для браузера
+      // Инициализируем Web Speech API для десктопа
       if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
         recognitionRef.current = new SpeechRecognition()
         recognitionRef.current.lang = 'ru-RU'
-        recognitionRef.current.continuous = true  // ИЗМЕНЕНО: true для мобильных
+        recognitionRef.current.continuous = true
         recognitionRef.current.interimResults = false
         recognitionRef.current.maxAlternatives = 1
 
@@ -264,6 +272,7 @@ function App() {
   const startListening = async () => {
     console.log('[startListening] Запускаю распознавание...')
     console.log('[startListening] isNative:', isNative)
+    console.log('[startListening] isMobile:', isMobile)
     console.log('[startListening] window.AndroidVoice:', typeof window.AndroidVoice)
 
     // Проверяем наличие AndroidVoice напрямую
@@ -296,12 +305,38 @@ function App() {
         setStatus('❌ Не удалось запустить микрофон')
         setIsListening(false)
       }
+    } else if (isMobile && voskRef.current) {
+      // Используем Vosk для мобильных браузеров
+      console.log('[startListening] Использую Vosk (офлайн распознавание)')
+
+      setStatus('⏳ Загружаю модель распознавания...')
+
+      const success = await voskRef.current.start(
+        (text) => {
+          console.log('[Vosk] Распознано:', text)
+          processVoiceCommand(text)
+        },
+        (error) => {
+          console.error('[Vosk] Ошибка:', error)
+          setStatus(`❌ Ошибка Vosk: ${error}`)
+          setIsListening(false)
+        }
+      )
+
+      if (success) {
+        console.log('[Vosk] Распознавание запущено')
+        setIsListening(true)
+        setStatus('🎤 Слушаю...')
+      } else {
+        console.error('[Vosk] Не удалось запустить')
+        setStatus('❌ Не удалось запустить Vosk')
+        setIsListening(false)
+      }
     } else if (recognitionRef.current) {
-      // Используем Web Speech API для браузера
+      // Используем Web Speech API для десктопа
       console.log('[startListening] Использую Web Speech API')
 
       try {
-        // Запускаем напрямую без getUserMedia - пусть Web Speech API сам управляет разрешениями
         console.log('[startListening] Вызываю recognition.start() напрямую...')
         recognitionRef.current.start()
         console.log('[Web Speech] start() вызван успешно')
@@ -325,9 +360,10 @@ function App() {
     } else {
       console.error('[startListening] Распознавание недоступно')
       console.error('[startListening] recognitionRef.current:', recognitionRef.current)
-      setStatus('❌ Распознавание речи не поддерживается в этом браузере. Используйте Chrome или Edge.')
+      console.error('[startListening] voskRef.current:', voskRef.current)
+      setStatus('❌ Распознавание речи не поддерживается в этом браузере.')
       setIsListening(false)
-      alert('Распознавание речи не поддерживается в этом браузере. Используйте Chrome или Edge.')
+      alert('Распознавание речи не поддерживается в этом браузере.')
     }
   }
 
@@ -339,6 +375,9 @@ function App() {
     if (nativeVoiceRef.current) {
       await nativeVoiceRef.current.stop()
       console.log('[NativeVoice] Остановлен')
+    } else if (voskRef.current) {
+      await voskRef.current.stop()
+      console.log('[Vosk] Остановлен')
     } else if (recognitionRef.current) {
       try {
         recognitionRef.current.stop()
