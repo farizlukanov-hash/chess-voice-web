@@ -207,10 +207,9 @@ function App() {
       lastOpponentMoveSpeechRef.current = opponentSpeechText
       speak(`Враг сходил ${opponentSpeechText}`)
 
-      // Обновляем состояние - используем тот же объект currentGame
-      setGame(new Chess(currentGame.fen()))
+      // НЕ создаём новый объект - используем тот же currentGame с историей
+      setGame(currentGame)
       setFen(currentGame.fen())
-      // gameRef уже указывает на currentGame с историей
 
       // Проверка окончания после хода противника
       if (currentGame.isGameOver()) {
@@ -277,10 +276,9 @@ function App() {
         const moveObj = currentGame.move(bestMoveUCI, { sloppy: true })
 
         if (moveObj) {
-          // Обновляем состояние с новой позицией
-          setGame(new Chess(currentGame.fen()))
+          // НЕ создаём новый объект - используем тот же currentGame с историей
+          setGame(currentGame)
           setFen(currentGame.fen())
-          // gameRef уже указывает на currentGame с историей
 
           // Конвертируем в речь
           const speechText = ttsRef.current.moveToSpeech(moveObj.san)
@@ -317,9 +315,8 @@ function App() {
           const randomMove = moves[Math.floor(Math.random() * moves.length)]
           const moveObj = currentGame.move(randomMove)
           if (moveObj) {
-            setGame(new Chess(currentGame.fen()))
+            setGame(currentGame)
             setFen(currentGame.fen())
-            // gameRef уже указывает на currentGame с историей
             const speechText = ttsRef.current.moveToSpeech(moveObj.san)
             setLastMove(moveObj.san)
             setLastMoveSpeech(speechText)
@@ -381,9 +378,8 @@ function App() {
         const moveObj = currentGame.move(bestMoveUCI, { sloppy: true })
 
         if (moveObj) {
-          setGame(new Chess(currentGame.fen()))
+          setGame(currentGame)
           setFen(currentGame.fen())
-          // gameRef уже указывает на currentGame с историей
 
           const speechText = ttsRef.current.moveToSpeech(moveObj.san)
           setLastMove(moveObj.san)
@@ -411,9 +407,8 @@ function App() {
           const randomMove = moves[Math.floor(Math.random() * moves.length)]
           const moveObj = currentGame.move(randomMove)
           if (moveObj) {
-            setGame(new Chess(currentGame.fen()))
+            setGame(currentGame)
             setFen(currentGame.fen())
-            // gameRef уже указывает на currentGame с историей
             const speechText = ttsRef.current.moveToSpeech(moveObj.san)
             setLastMove(moveObj.san)
             setLastMoveSpeech(speechText)
