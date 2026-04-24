@@ -146,6 +146,10 @@ function App() {
       utterance.rate = 0.85
 
       utterance.onerror = (event) => {
+        // Игнорируем "interrupted" - это нормально когда новая озвучка начинается
+        if (event.error === 'interrupted') {
+          return
+        }
         console.error('[TTS] Ошибка озвучки:', event.error)
         setStatus(`❌ Ошибка озвучки: ${event.error}`)
       }

@@ -83,6 +83,9 @@ export class VoiceParser {
   parse(text) {
     text = text.toLowerCase().trim()
 
+    // Убираем знаки препинания
+    text = text.replace(/[.,!?;:]/g, ' ')
+
     // Проверка специальных ходов
     for (const [phrase, move] of Object.entries(this.specialMoves)) {
       if (text.includes(phrase)) {
