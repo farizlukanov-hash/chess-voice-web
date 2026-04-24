@@ -165,7 +165,6 @@ function App() {
       window.speechSynthesis.cancel()
 
       const utterance = new SpeechSynthesisUtterance(text)
-      utterance.lang = 'ru-RU'
       utterance.rate = 0.85
 
       // Пытаемся найти русский голос
@@ -175,9 +174,18 @@ function App() {
       const russianVoice = voices.find(voice => voice.lang.startsWith('ru'))
       if (russianVoice) {
         utterance.voice = russianVoice
+        utterance.lang = 'ru-RU'
         console.log('[TTS] Использую голос:', russianVoice.name)
       } else {
-        console.log('[TTS] Русский голос не найден, использую дефолтный')
+        // Используем первый доступный голос (любой язык)
+        if (voices.length > 0) {
+          utterance.voice = voices[0]
+          utterance.lang = voices[0].lang
+          console.log('[TTS] Русский голос не найден, использую:', voices[0].name, voices[0].lang)
+        } else {
+          console.log('[TTS] Голоса не загружены, использую дефолтный')
+          utterance.lang = 'en-US' // Английский по умолчанию
+        }
       }
 
       utterance.onstart = () => {
@@ -540,7 +548,20 @@ function App() {
     }
   }
 
-  const startGame = () => {
+  const startGame = async () => {
+    // Явно запрашиваем разрешение на микрофон (важно для мобильных)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      console.log('[Микрофон] Разрешение получено')
+      // Останавливаем поток - он нам не нужен, нужно только разрешение
+      stream.getTracks().forEach(track => track.stop())
+    } catch (error) {
+      console.error('[Микрофон] Не удалось получить разрешение:', error)
+      setStatus(`❌ Разрешите доступ к микрофону в настройках браузера`)
+      speak('Разрешите доступ к микрофону')
+      return
+    }
+
     const newGame = new Chess()
     setGame(newGame)
     gameRef.current = newGame
@@ -560,6 +581,7 @@ function App() {
       if (recognitionRef.current) {
         try {
           recognitionRef.current.start()
+          console.log('[Микрофон] Запущен после получения разрешения')
         } catch (e) {
           console.log('[Микрофон] Ошибка запуска:', e.message)
           setStatus(`❌ Не удалось запустить микрофон: ${e.message}. Проверьте разрешения в браузере.`)
