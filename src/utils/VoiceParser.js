@@ -32,6 +32,9 @@ export class VoiceParser {
       'ферзём': 'Q',
       'ферзем': 'Q',
       'король': 'K',
+      'королём': 'K',
+      'королем': 'K',
+      'короля': 'K',
     }
 
     // Словарь вертикалей
@@ -162,6 +165,9 @@ export class VoiceParser {
     text = text.replace(/ферзем/g, 'ферзь')
     text = text.replace(/ферзи/g, 'ферзь')
     text = text.replace(/ферзей/g, 'ферзь')
+    text = text.replace(/королём/g, 'король')
+    text = text.replace(/королем/g, 'король')
+    text = text.replace(/короля/g, 'король')
 
     // Убираем слова-паразиты
     const noiseWords = [

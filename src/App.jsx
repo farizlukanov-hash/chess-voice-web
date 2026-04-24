@@ -207,9 +207,16 @@ function App() {
       lastOpponentMoveSpeechRef.current = opponentSpeechText
       speak(`Враг сходил ${opponentSpeechText}`)
 
-      // НЕ создаём новый объект - используем тот же currentGame с историей
-      setGame(currentGame)
-      setFen(currentGame.fen())
+      // Создаём новый объект для перерендера с той же историей
+      const newGame = new Chess()
+      const moves = currentGame.history({ verbose: true })
+      moves.forEach(move => {
+        newGame.move(move)
+      })
+
+      setGame(newGame)
+      gameRef.current = newGame
+      setFen(newGame.fen())
 
       // Проверка окончания после хода противника
       if (currentGame.isGameOver()) {
@@ -276,9 +283,16 @@ function App() {
         const moveObj = currentGame.move(bestMoveUCI, { sloppy: true })
 
         if (moveObj) {
-          // НЕ создаём новый объект - используем тот же currentGame с историей
-          setGame(currentGame)
-          setFen(currentGame.fen())
+          // Создаём новый объект для перерендера с той же историей
+          const newGame = new Chess()
+          const moves = currentGame.history({ verbose: true })
+          moves.forEach(move => {
+            newGame.move(move)
+          })
+
+          setGame(newGame)
+          gameRef.current = newGame
+          setFen(newGame.fen())
 
           // Конвертируем в речь
           const speechText = ttsRef.current.moveToSpeech(moveObj.san)
@@ -315,8 +329,16 @@ function App() {
           const randomMove = moves[Math.floor(Math.random() * moves.length)]
           const moveObj = currentGame.move(randomMove)
           if (moveObj) {
-            setGame(currentGame)
-            setFen(currentGame.fen())
+            // Создаём новый объект для перерендера с той же историей
+            const newGame = new Chess()
+            const movesHistory = currentGame.history({ verbose: true })
+            movesHistory.forEach(move => {
+              newGame.move(move)
+            })
+
+            setGame(newGame)
+            gameRef.current = newGame
+            setFen(newGame.fen())
             const speechText = ttsRef.current.moveToSpeech(moveObj.san)
             setLastMove(moveObj.san)
             setLastMoveSpeech(speechText)
@@ -378,8 +400,16 @@ function App() {
         const moveObj = currentGame.move(bestMoveUCI, { sloppy: true })
 
         if (moveObj) {
-          setGame(currentGame)
-          setFen(currentGame.fen())
+          // Создаём новый объект для перерендера с той же историей
+          const newGame = new Chess()
+          const moves = currentGame.history({ verbose: true })
+          moves.forEach(move => {
+            newGame.move(move)
+          })
+
+          setGame(newGame)
+          gameRef.current = newGame
+          setFen(newGame.fen())
 
           const speechText = ttsRef.current.moveToSpeech(moveObj.san)
           setLastMove(moveObj.san)
@@ -407,8 +437,16 @@ function App() {
           const randomMove = moves[Math.floor(Math.random() * moves.length)]
           const moveObj = currentGame.move(randomMove)
           if (moveObj) {
-            setGame(currentGame)
-            setFen(currentGame.fen())
+            // Создаём новый объект для перерендера с той же историей
+            const newGame = new Chess()
+            const movesHistory = currentGame.history({ verbose: true })
+            movesHistory.forEach(move => {
+              newGame.move(move)
+            })
+
+            setGame(newGame)
+            gameRef.current = newGame
+            setFen(newGame.fen())
             const speechText = ttsRef.current.moveToSpeech(moveObj.san)
             setLastMove(moveObj.san)
             setLastMoveSpeech(speechText)
@@ -492,12 +530,21 @@ function App() {
       console.log('[DEBUG] Отменён 2 ход, осталось:', currentGame.history().length)
     }
 
-    setGame(new Chess(currentGame.fen()))
-    setFen(currentGame.fen())
+    // Создаём новый объект для перерендера, но с той же позицией и историей
+    const newGame = new Chess()
+    const moves = currentGame.history({ verbose: true })
+    moves.forEach(move => {
+      newGame.move(move)
+    })
+
+    setGame(newGame)
+    gameRef.current = newGame
+    setFen(newGame.fen())
     setStatus('Ход отменён')
     speak('Ход отменён')
 
-    console.log('[DEBUG] Новая позиция:', currentGame.fen())
+    console.log('[DEBUG] Новая позиция:', newGame.fen())
+    console.log('[DEBUG] Новая история:', newGame.history())
   }
 
   const restartGame = () => {
