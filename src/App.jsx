@@ -49,8 +49,9 @@ function App() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
       recognitionRef.current = new SpeechRecognition()
       recognitionRef.current.lang = 'ru-RU'
-      recognitionRef.current.continuous = false
+      recognitionRef.current.continuous = true
       recognitionRef.current.interimResults = false
+      recognitionRef.current.maxAlternatives = 1
 
       recognitionRef.current.onstart = () => {
         console.log('[Микрофон] Слушаю...')
@@ -65,22 +66,28 @@ function App() {
 
       recognitionRef.current.onerror = (event) => {
         console.error('[Микрофон] Ошибка:', event.error)
-        // Не останавливаем прослушивание при ошибках
+        // Игнорируем ошибки "no-speech" - это нормально
+        if (event.error === 'no-speech') {
+          console.log('[Микрофон] Тишина, продолжаю слушать')
+          return
+        }
+        // При других ошибках тоже не останавливаем
       }
 
       recognitionRef.current.onend = () => {
-        console.log('[Микрофон] Запись завершена')
-        // ВСЕГДА перезапускаем если игра активна
+        console.log('[Микрофон] Сессия завершена')
+        // Перезапускаем только если игра активна и слушаем
         if (gameStarted && isListening) {
+          console.log('[Микрофон] Перезапускаю...')
           setTimeout(() => {
             if (recognitionRef.current && isListening) {
               try {
                 recognitionRef.current.start()
               } catch (e) {
-                console.log('[Микрофон] Уже запущен')
+                console.log('[Микрофон] Ошибка перезапуска:', e.message)
               }
             }
-          }, 100)
+          }, 300)
         }
       }
     }
@@ -120,8 +127,12 @@ function App() {
     const legalMoves = gameRef.current.moves()
     const parsedMove = parserRef.current.parseWithContext(text, legalMoves, true)
 
+    console.log('[DEBUG] Легальные ходы:', legalMoves)
+    console.log('[DEBUG] Распознанный ход:', parsedMove)
+
     if (!parsedMove) {
       const anyMove = parserRef.current.parse(text)
+      console.log('[DEBUG] Парсер вернул (без контекста):', anyMove)
       if (anyMove) {
         setStatus(`Ход ${anyMove} невозможен`)
         speak(`Ход ${anyMove} невозможен`)
