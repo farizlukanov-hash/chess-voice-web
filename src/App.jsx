@@ -194,6 +194,7 @@ function App() {
     const currentFen = currentGame.fen()
 
     if (!stockfishRef.current) {
+      console.log('[Stockfish] НЕ ИНИЦИАЛИЗИРОВАН - используем fallback')
       // Fallback: случайный ход
       const moves = currentGame.moves()
       if (moves.length > 0) {
@@ -213,13 +214,20 @@ function App() {
       return
     }
 
+    console.log('[Stockfish] Отправляю позицию:', currentFen)
     stockfishRef.current.postMessage(`position fen ${currentFen}`)
-    stockfishRef.current.postMessage('go movetime 1000')
+    stockfishRef.current.postMessage('go movetime 2000')
+
+    let responded = false
 
     const handleMessage = (event) => {
       const line = event.data
-      if (typeof line === 'string' && line.startsWith('bestmove')) {
+      console.log('[Stockfish] Ответ:', line)
+
+      if (typeof line === 'string' && line.startsWith('bestmove') && !responded) {
+        responded = true
         const bestMoveUCI = line.split(' ')[1]
+        console.log('[Stockfish] Лучший ход UCI:', bestMoveUCI)
 
         // Конвертируем UCI в SAN
         const moveObj = currentGame.move(bestMoveUCI, { sloppy: true })
@@ -252,6 +260,29 @@ function App() {
     }
 
     stockfishRef.current.addEventListener('message', handleMessage)
+
+    // Таймаут на случай если Stockfish не ответит
+    setTimeout(() => {
+      if (!responded) {
+        console.log('[Stockfish] ТАЙМАУТ - используем fallback')
+        stockfishRef.current.removeEventListener('message', handleMessage)
+        const moves = currentGame.moves()
+        if (moves.length > 0) {
+          const randomMove = moves[Math.floor(Math.random() * moves.length)]
+          const moveObj = currentGame.move(randomMove)
+          if (moveObj) {
+            setGame(new Chess(currentGame.fen()))
+            setFen(currentGame.fen())
+            const speechText = ttsRef.current.moveToSpeech(moveObj.san)
+            setLastMove(moveObj.san)
+            setLastMoveSpeech(speechText)
+            setStatus(`✓ Ход обработан`)
+            speak(`Ходи ${speechText}`)
+            console.log('[DEBUG] Мой ход (timeout fallback):', moveObj.san, '-> Речь:', speechText)
+          }
+        }
+      }
+    }, 5000)
   }
 
   const makeMyFirstMove = () => {
@@ -261,6 +292,7 @@ function App() {
     setStatus('Думаю над первым ходом...')
 
     if (!stockfishRef.current) {
+      console.log('[Stockfish] НЕ ИНИЦИАЛИЗИРОВАН - используем fallback')
       // Fallback
       const moves = currentGame.moves()
       if (moves.length > 0) {
@@ -280,13 +312,20 @@ function App() {
       return
     }
 
+    console.log('[Stockfish] Отправляю начальную позицию:', currentFen)
     stockfishRef.current.postMessage(`position fen ${currentFen}`)
-    stockfishRef.current.postMessage('go movetime 1000')
+    stockfishRef.current.postMessage('go movetime 2000')
+
+    let responded = false
 
     const handleMessage = (event) => {
       const line = event.data
-      if (typeof line === 'string' && line.startsWith('bestmove')) {
+      console.log('[Stockfish] Ответ:', line)
+
+      if (typeof line === 'string' && line.startsWith('bestmove') && !responded) {
+        responded = true
         const bestMoveUCI = line.split(' ')[1]
+        console.log('[Stockfish] Первый ход UCI:', bestMoveUCI)
 
         const moveObj = currentGame.move(bestMoveUCI, { sloppy: true })
 
@@ -308,6 +347,29 @@ function App() {
     }
 
     stockfishRef.current.addEventListener('message', handleMessage)
+
+    // Таймаут
+    setTimeout(() => {
+      if (!responded) {
+        console.log('[Stockfish] ТАЙМАУТ на первом ходе - используем fallback')
+        stockfishRef.current.removeEventListener('message', handleMessage)
+        const moves = currentGame.moves()
+        if (moves.length > 0) {
+          const randomMove = moves[Math.floor(Math.random() * moves.length)]
+          const moveObj = currentGame.move(randomMove)
+          if (moveObj) {
+            setGame(new Chess(currentGame.fen()))
+            setFen(currentGame.fen())
+            const speechText = ttsRef.current.moveToSpeech(moveObj.san)
+            setLastMove(moveObj.san)
+            setLastMoveSpeech(speechText)
+            setStatus('✓ Готов')
+            speak(`Ходи ${speechText}`)
+            console.log('[DEBUG] Первый ход (timeout fallback):', moveObj.san, '-> Речь:', speechText)
+          }
+        }
+      }
+    }, 5000)
   }
 
   const handleGameOver = () => {
