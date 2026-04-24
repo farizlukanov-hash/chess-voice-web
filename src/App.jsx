@@ -80,6 +80,10 @@ function App() {
       }
 
       recognitionRef.current.onerror = (event) => {
+        // Игнорируем aborted и no-speech - это нормально
+        if (event.error === 'aborted' || event.error === 'no-speech') {
+          return
+        }
         console.error('[Микрофон] Ошибка:', event.error)
       }
 
