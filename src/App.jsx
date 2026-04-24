@@ -207,7 +207,9 @@ function App() {
       lastOpponentMoveSpeechRef.current = opponentSpeechText
       speak(`Враг сходил ${opponentSpeechText}`)
 
-      setGame(new Chess(currentGame.fen()))
+      const newGame = new Chess(currentGame.fen())
+      setGame(newGame)
+      gameRef.current = newGame
       setFen(currentGame.fen())
 
       // Проверка окончания после хода противника
@@ -240,7 +242,9 @@ function App() {
         const randomMove = moves[Math.floor(Math.random() * moves.length)]
         const moveObj = currentGame.move(randomMove)
         if (moveObj) {
-          setGame(new Chess(currentGame.fen()))
+          const newGame = new Chess(currentGame.fen())
+          setGame(newGame)
+          gameRef.current = newGame
           setFen(currentGame.fen())
           const speechText = ttsRef.current.moveToSpeech(moveObj.san)
           setLastMove(moveObj.san)
@@ -274,7 +278,9 @@ function App() {
 
         if (moveObj) {
           // Обновляем состояние с новой позицией
-          setGame(new Chess(currentGame.fen()))
+          const newGame = new Chess(currentGame.fen())
+          setGame(newGame)
+          gameRef.current = newGame
           setFen(currentGame.fen())
 
           // Конвертируем в речь
@@ -312,7 +318,9 @@ function App() {
           const randomMove = moves[Math.floor(Math.random() * moves.length)]
           const moveObj = currentGame.move(randomMove)
           if (moveObj) {
-            setGame(new Chess(currentGame.fen()))
+            const newGame = new Chess(currentGame.fen())
+            setGame(newGame)
+            gameRef.current = newGame
             setFen(currentGame.fen())
             const speechText = ttsRef.current.moveToSpeech(moveObj.san)
             setLastMove(moveObj.san)
@@ -341,7 +349,9 @@ function App() {
         const randomMove = moves[Math.floor(Math.random() * moves.length)]
         const moveObj = currentGame.move(randomMove)
         if (moveObj) {
-          setGame(new Chess(currentGame.fen()))
+          const newGame = new Chess(currentGame.fen())
+          setGame(newGame)
+          gameRef.current = newGame
           setFen(currentGame.fen())
           const speechText = ttsRef.current.moveToSpeech(moveObj.san)
           setLastMove(moveObj.san)
@@ -373,7 +383,9 @@ function App() {
         const moveObj = currentGame.move(bestMoveUCI, { sloppy: true })
 
         if (moveObj) {
-          setGame(new Chess(currentGame.fen()))
+          const newGame = new Chess(currentGame.fen())
+          setGame(newGame)
+          gameRef.current = newGame
           setFen(currentGame.fen())
 
           const speechText = ttsRef.current.moveToSpeech(moveObj.san)
@@ -402,7 +414,9 @@ function App() {
           const randomMove = moves[Math.floor(Math.random() * moves.length)]
           const moveObj = currentGame.move(randomMove)
           if (moveObj) {
-            setGame(new Chess(currentGame.fen()))
+            const newGame = new Chess(currentGame.fen())
+            setGame(newGame)
+            gameRef.current = newGame
             setFen(currentGame.fen())
             const speechText = ttsRef.current.moveToSpeech(moveObj.san)
             setLastMove(moveObj.san)
