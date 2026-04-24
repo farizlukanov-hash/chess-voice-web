@@ -612,6 +612,12 @@ function App() {
     setStatus('Ход отменён')
     speak('Ход отменён')
 
+    // Очищаем последние ходы для "ещё раз"
+    lastMoveSpeechRef.current = ''
+    lastOpponentMoveSpeechRef.current = ''
+    setLastMove('')
+    setLastMoveSpeech('')
+
     console.log('[DEBUG] Новая позиция:', newGame.fen())
     console.log('[DEBUG] Новая история:', newGame.history())
   }
