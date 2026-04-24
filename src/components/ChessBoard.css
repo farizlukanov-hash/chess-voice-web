@@ -1,3 +1,43 @@
+.board-container {
+  display: inline-block;
+}
+
+.files-top,
+.files-bottom {
+  display: flex;
+  margin-left: 30px;
+}
+
+.board-with-ranks {
+  display: flex;
+  align-items: center;
+}
+
+.ranks-left,
+.ranks-right {
+  display: flex;
+  flex-direction: column;
+  width: 30px;
+}
+
+.coordinate {
+  width: 60px;
+  height: 60px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 16px;
+  font-weight: bold;
+  color: white;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.ranks-left .coordinate,
+.ranks-right .coordinate {
+  width: 30px;
+  height: 60px;
+}
+
 .chess-board {
   display: inline-block;
   border: 4px solid #333;
@@ -49,6 +89,28 @@
     height: 45px;
     font-size: 36px;
   }
+
+  .coordinate {
+    width: 45px;
+    height: 45px;
+    font-size: 14px;
+  }
+
+  .ranks-left .coordinate,
+  .ranks-right .coordinate {
+    width: 25px;
+    height: 45px;
+  }
+
+  .ranks-left,
+  .ranks-right {
+    width: 25px;
+  }
+
+  .files-top,
+  .files-bottom {
+    margin-left: 25px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -56,5 +118,27 @@
     width: 38px;
     height: 38px;
     font-size: 30px;
+  }
+
+  .coordinate {
+    width: 38px;
+    height: 38px;
+    font-size: 12px;
+  }
+
+  .ranks-left .coordinate,
+  .ranks-right .coordinate {
+    width: 20px;
+    height: 38px;
+  }
+
+  .ranks-left,
+  .ranks-right {
+    width: 20px;
+  }
+
+  .files-top,
+  .files-bottom {
+    margin-left: 20px;
   }
 }
