@@ -562,23 +562,6 @@ function App() {
   const startGame = async () => {
     console.log('[startGame] Начинаю игру...')
 
-    // Явно запрашиваем разрешение на микрофон и ДЕРЖИМ stream активным
-    try {
-      console.log('[startGame] Запрашиваю разрешение на микрофон через getUserMedia...')
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      console.log('[Микрофон] Разрешение getUserMedia получено, stream:', stream)
-      // НЕ останавливаем поток - держим его активным для Android
-      setMicStream(stream)
-      console.log('[Микрофон] Stream сохранён и остаётся активным')
-    } catch (error) {
-      console.error('[Микрофон] Не удалось получить разрешение getUserMedia:', error)
-      console.error('[Микрофон] Error name:', error.name)
-      console.error('[Микрофон] Error message:', error.message)
-      setStatus(`❌ Разрешите доступ к микрофону в настройках браузера (${error.name})`)
-      speak('Разрешите доступ к микрофону')
-      return
-    }
-
     const newGame = new Chess()
     setGame(newGame)
     gameRef.current = newGame
@@ -594,40 +577,39 @@ function App() {
     // Тестовая озвучка для активации TTS на мобильных
     speak('Партия началась')
 
-    // Ждём дольше перед запуском микрофона (важно для Android)
-    console.log('[startGame] Жду 3 секунды перед запуском микрофона...')
+    // Запускаем микрофон напрямую без getUserMedia
+    console.log('[startGame] Жду 2 секунды перед запуском микрофона...')
     setTimeout(() => {
       console.log('[startGame] Устанавливаю isListening = true')
       setIsListening(true)
 
       setTimeout(() => {
-        console.log('[startGame] Пытаюсь запустить микрофон...')
+        console.log('[startGame] Пытаюсь запустить микрофон НАПРЯМУЮ...')
         console.log('[startGame] recognitionRef.current:', recognitionRef.current)
         console.log('[startGame] isListeningRef.current:', isListeningRef.current)
 
         if (recognitionRef.current) {
           try {
-            console.log('[startGame] Вызываю recognition.start()...')
+            console.log('[startGame] Вызываю recognition.start() БЕЗ getUserMedia...')
             recognitionRef.current.start()
             console.log('[Микрофон] start() вызван успешно')
           } catch (e) {
             console.error('[Микрофон] Ошибка при вызове start():', e)
             console.error('[Микрофон] Ошибка name:', e.name)
             console.error('[Микрофон] Ошибка message:', e.message)
-            console.error('[Микрофон] Ошибка stack:', e.stack)
-            setStatus(`❌ Не удалось запустить микрофон: ${e.message}`)
+            setStatus(`❌ Микрофон не работает на вашем устройстве. Попробуйте другой браузер или телефон.`)
+            speak('Микрофон не работает на вашем устройстве')
           }
         } else {
           console.error('[startGame] recognitionRef.current is null!')
           setStatus('❌ Микрофон не инициализирован. Перезагрузите страницу.')
         }
-      }, 1000)
-    }, 3000)
+      }, 500)
+    }, 2000)
 
     if (playingAsWhite) {
       console.log('[startGame] Играю за белых, делаю первый ход...')
-      // Подсказываем первый ход
-      setTimeout(() => makeMyFirstMove(), 5000)
+      setTimeout(() => makeMyFirstMove(), 3000)
     } else {
       console.log('[startGame] Играю за чёрных')
       speak('Вы играете чёрными. Ждите хода противника.')
