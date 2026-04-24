@@ -789,8 +789,11 @@ function App() {
             gameStarted={gameStarted}
             playingAsWhite={playingAsWhite}
             isListening={isListening}
+            continuousListening={isListening}
             onStartGame={startGame}
             onRestartGame={restartGame}
+            onStartListening={startListening}
+            onStopListening={stopListening}
             onSideChange={setPlayingAsWhite}
             onOpenMicTest={() => setShowMicTest(true)}
           />
