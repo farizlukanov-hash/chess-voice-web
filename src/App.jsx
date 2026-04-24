@@ -467,7 +467,12 @@ function App() {
 
   const undoMove = () => {
     const currentGame = gameRef.current
-    if (currentGame.history().length === 0) {
+    const historyLength = currentGame.history().length
+
+    console.log('[DEBUG] Отмена: история содержит', historyLength, 'ходов')
+    console.log('[DEBUG] История:', currentGame.history())
+
+    if (historyLength === 0) {
       setStatus('Нечего отменять')
       speak('Нечего отменять')
       return
@@ -475,14 +480,19 @@ function App() {
 
     // Отменяем последний ход (или два хода если их было два)
     currentGame.undo()
+    console.log('[DEBUG] Отменён 1 ход, осталось:', currentGame.history().length)
+
     if (currentGame.history().length > 0) {
       currentGame.undo()
+      console.log('[DEBUG] Отменён 2 ход, осталось:', currentGame.history().length)
     }
 
     setGame(new Chess(currentGame.fen()))
     setFen(currentGame.fen())
     setStatus('Ход отменён')
     speak('Ход отменён')
+
+    console.log('[DEBUG] Новая позиция:', currentGame.fen())
   }
 
   const restartGame = () => {
