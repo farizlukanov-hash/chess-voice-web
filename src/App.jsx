@@ -65,7 +65,7 @@ function App() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
       recognitionRef.current = new SpeechRecognition()
       recognitionRef.current.lang = 'ru-RU'
-      recognitionRef.current.continuous = false
+      recognitionRef.current.continuous = true  // Слушаем непрерывно 7 секунд
       recognitionRef.current.interimResults = false
       recognitionRef.current.maxAlternatives = 1
 
@@ -90,8 +90,10 @@ function App() {
       }
 
       recognitionRef.current.onresult = (event) => {
-        const transcript = event.results[0][0].transcript
-        const confidence = event.results[0][0].confidence
+        // Берём последний результат при continuous: true
+        const lastResult = event.results[event.results.length - 1]
+        const transcript = lastResult[0].transcript
+        const confidence = lastResult[0].confidence
         console.log('[Google] Распознал:', transcript, `(уверенность: ${(confidence * 100).toFixed(0)}%)`)
         processVoiceCommand(transcript)
       }
@@ -105,18 +107,26 @@ function App() {
       }
 
       recognitionRef.current.onend = () => {
-        console.log('[Микрофон] Сессия завершена, перезапускаю через 500ms')
-        // Перезапускаем через 500ms если слушаем
-        setTimeout(() => {
-          if (isListeningRef.current && recognitionRef.current) {
-            try {
-              recognitionRef.current.start()
-              console.log('[Микрофон] Перезапущен')
-            } catch (e) {
-              console.log('[Микрофон] Не удалось перезапустить:', e.message)
-            }
+        console.log('[Микрофон] Сессия завершена, перезапускаю сразу')
+        // Перезапускаем СРАЗУ без задержки
+        if (isListeningRef.current && recognitionRef.current) {
+          try {
+            recognitionRef.current.start()
+            console.log('[Микрофон] Перезапущен')
+          } catch (e) {
+            console.log('[Микрофон] Не удалось перезапустить:', e.message)
+            // Если не удалось - пробуем через 100ms
+            setTimeout(() => {
+              if (isListeningRef.current && recognitionRef.current) {
+                try {
+                  recognitionRef.current.start()
+                } catch (err) {
+                  console.log('[Микрофон] Повторная попытка не удалась')
+                }
+              }
+            }, 100)
           }
-        }, 500)
+        }
       }
     }
   }, [])
