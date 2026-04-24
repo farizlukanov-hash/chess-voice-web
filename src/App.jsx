@@ -65,14 +65,9 @@ function App() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
       recognitionRef.current = new SpeechRecognition()
       recognitionRef.current.lang = 'ru-RU'
-      recognitionRef.current.continuous = true  // Слушаем непрерывно 7 секунд
+      recognitionRef.current.continuous = false  // Одна фраза за раз
       recognitionRef.current.interimResults = false
       recognitionRef.current.maxAlternatives = 1
-
-      // ВАЖНО: Увеличиваем паузы чтобы не останавливался
-      if (recognitionRef.current.hasOwnProperty('pauseThreshold')) {
-        recognitionRef.current.pauseThreshold = 10  // Не останавливаться при паузе до 10 сек
-      }
 
       recognitionRef.current.onstart = () => {
         console.log('[Микрофон] Слушаю...')
@@ -80,10 +75,8 @@ function App() {
       }
 
       recognitionRef.current.onresult = (event) => {
-        // Берём последний результат при continuous: true
-        const lastResult = event.results[event.results.length - 1]
-        const transcript = lastResult[0].transcript
-        const confidence = lastResult[0].confidence
+        const transcript = event.results[0][0].transcript
+        const confidence = event.results[0][0].confidence
         console.log('[Google] Распознал:', transcript, `(уверенность: ${(confidence * 100).toFixed(0)}%)`)
         processVoiceCommand(transcript)
       }
