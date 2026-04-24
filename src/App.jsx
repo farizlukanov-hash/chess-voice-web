@@ -24,6 +24,8 @@ function App() {
   const gameRef = useRef(game)
   const isListeningRef = useRef(false)
   const sessionStartTimeRef = useRef(null)
+  const lastMoveSpeechRef = useRef('')
+  const lastOpponentMoveSpeechRef = useRef('')
 
   // Синхронизируем gameRef с game
   useEffect(() => {
@@ -86,6 +88,22 @@ function App() {
         if (event.error === 'aborted' || event.error === 'no-speech') {
           return
         }
+
+        // При network ошибке - автоматически перезапускаем
+        if (event.error === 'network') {
+          console.log('[Микрофон] Ошибка сети, перезапускаю...')
+          setTimeout(() => {
+            if (isListeningRef.current && recognitionRef.current) {
+              try {
+                recognitionRef.current.start()
+              } catch (e) {
+                console.log('[Микрофон] Не удалось перезапустить после network error')
+              }
+            }
+          }, 500)
+          return
+        }
+
         console.error('[Микрофон] Ошибка:', event.error)
       }
 
@@ -136,8 +154,10 @@ function App() {
 
     // Команда "ещё раз"
     if (text.toLowerCase().includes('ещё раз') || text.toLowerCase().includes('еще раз')) {
-      if (lastMoveSpeech) {
-        speak(`Ходи ${lastMoveSpeech}`)
+      if (lastOpponentMoveSpeechRef.current && lastMoveSpeechRef.current) {
+        speak(`Враг сходил ${lastOpponentMoveSpeechRef.current}. Ходи ${lastMoveSpeechRef.current}`)
+      } else if (lastMoveSpeechRef.current) {
+        speak(`Ходи ${lastMoveSpeechRef.current}`)
       } else {
         speak('Нет хода для повтора')
       }
@@ -181,6 +201,12 @@ function App() {
       }
 
       console.log('[DEBUG] Ход противника:', opponentResult.san)
+
+      // Сохраняем и озвучиваем ход противника
+      const opponentSpeechText = ttsRef.current.moveToSpeech(opponentResult.san)
+      lastOpponentMoveSpeechRef.current = opponentSpeechText
+      speak(`Враг сходил ${opponentSpeechText}`)
+
       setGame(new Chess(currentGame.fen()))
       setFen(currentGame.fen())
 
@@ -192,7 +218,11 @@ function App() {
 
       // 2. Вычисляем ТВОЙ лучший ход
       setStatus('Думаю...')
-      calculateBestMoveAndMake(currentGame)
+
+      // Небольшая задержка чтобы успеть озвучить ход противника
+      setTimeout(() => {
+        calculateBestMoveAndMake(currentGame)
+      }, 1500)
     } catch (error) {
       console.error('[Ошибка]:', error)
       setStatus('Ошибка хода')
@@ -215,6 +245,7 @@ function App() {
           const speechText = ttsRef.current.moveToSpeech(moveObj.san)
           setLastMove(moveObj.san)
           setLastMoveSpeech(speechText)
+          lastMoveSpeechRef.current = speechText
           setStatus(`✓ Ход обработан`)
           speak(`Ходи ${speechText}`)
           console.log('[DEBUG] Мой ход (fallback):', moveObj.san, '-> Речь:', speechText)
@@ -251,6 +282,7 @@ function App() {
 
           setLastMove(moveObj.san)
           setLastMoveSpeech(speechText)
+          lastMoveSpeechRef.current = speechText
           setStatus(`✓ Ход обработан`)
 
           // Озвучиваем
@@ -285,6 +317,7 @@ function App() {
             const speechText = ttsRef.current.moveToSpeech(moveObj.san)
             setLastMove(moveObj.san)
             setLastMoveSpeech(speechText)
+            lastMoveSpeechRef.current = speechText
             setStatus(`✓ Ход обработан`)
             speak(`Ходи ${speechText}`)
             console.log('[DEBUG] Мой ход (timeout fallback):', moveObj.san, '-> Речь:', speechText)
@@ -313,6 +346,7 @@ function App() {
           const speechText = ttsRef.current.moveToSpeech(moveObj.san)
           setLastMove(moveObj.san)
           setLastMoveSpeech(speechText)
+          lastMoveSpeechRef.current = speechText
           setStatus('✓ Готов')
           speak(`Ходи ${speechText}`)
           console.log('[DEBUG] Первый ход (fallback):', moveObj.san, '-> Речь:', speechText)
@@ -345,6 +379,7 @@ function App() {
           const speechText = ttsRef.current.moveToSpeech(moveObj.san)
           setLastMove(moveObj.san)
           setLastMoveSpeech(speechText)
+          lastMoveSpeechRef.current = speechText
           setStatus('✓ Готов')
 
           speak(`Ходи ${speechText}`)
@@ -372,6 +407,7 @@ function App() {
             const speechText = ttsRef.current.moveToSpeech(moveObj.san)
             setLastMove(moveObj.san)
             setLastMoveSpeech(speechText)
+            lastMoveSpeechRef.current = speechText
             setStatus('✓ Готов')
             speak(`Ходи ${speechText}`)
             console.log('[DEBUG] Первый ход (timeout fallback):', moveObj.san, '-> Речь:', speechText)
@@ -405,6 +441,8 @@ function App() {
     setGameStarted(true)
     setLastMove('')
     setLastMoveSpeech('')
+    lastMoveSpeechRef.current = ''
+    lastOpponentMoveSpeechRef.current = ''
 
     // СРАЗУ запускаем прослушивание
     setIsListening(true)
@@ -456,6 +494,8 @@ function App() {
     setGameStarted(false)
     setLastMove('')
     setLastMoveSpeech('')
+    lastMoveSpeechRef.current = ''
+    lastOpponentMoveSpeechRef.current = ''
     setStatus('Выберите за кого играете и нажмите "Начать партию"')
     speak('Партия сброшена')
   }

@@ -5,19 +5,27 @@ export class VoiceParser {
     this.pieces = {
       'пешка': '',
       'конь': 'N',
+      'кони': 'N',
+      'коней': 'N',
       'лошадь': 'N',
       'коне': 'N',
       'конём': 'N',
       'конем': 'N',
       'слон': 'B',
+      'слоны': 'B',
+      'слонов': 'B',
       'слоне': 'B',
       'слоном': 'B',
       'ладья': 'R',
+      'ладьи': 'R',
+      'ладей': 'R',
       'тура': 'R',
       'ладье': 'R',
       'ладьёй': 'R',
       'ладьей': 'R',
       'ферзь': 'Q',
+      'ферзи': 'Q',
+      'ферзей': 'Q',
       'королева': 'Q',
       'дама': 'Q',
       'ферзе': 'Q',
@@ -129,14 +137,27 @@ export class VoiceParser {
     text = text.replace(/\bслонов\s+(\d)/g, 'слон ф $1')
     text = text.replace(/\bферзев\s+(\d)/g, 'ферзь ф $1')
 
+    // Исправляем "в" → "ф" когда рядом цифра (частая ошибка Google)
+    text = text.replace(/\bв\s+(\d)/g, 'ф $1')
+    text = text.replace(/\b([а-я]+)\s+в\s+(\d)/g, '$1 ф $2')
+
     // Убираем окончания
     text = text.replace(/пешкой/g, 'пешка')
     text = text.replace(/конём/g, 'конь')
+    text = text.replace(/конем/g, 'конь')
+    text = text.replace(/кони/g, 'конь')
+    text = text.replace(/коней/g, 'конь')
     text = text.replace(/слоном/g, 'слон')
+    text = text.replace(/слоны/g, 'слон')
+    text = text.replace(/слонов/g, 'слон')
     text = text.replace(/ладьёй/g, 'ладья')
     text = text.replace(/ладьей/g, 'ладья')
+    text = text.replace(/ладьи/g, 'ладья')
+    text = text.replace(/ладей/g, 'ладья')
     text = text.replace(/ферзём/g, 'ферзь')
     text = text.replace(/ферзем/g, 'ферзь')
+    text = text.replace(/ферзи/g, 'ферзь')
+    text = text.replace(/ферзей/g, 'ферзь')
 
     // Убираем слова-паразиты
     const noiseWords = [
@@ -221,6 +242,40 @@ export class VoiceParser {
     const parsed = this.parse(text)
 
     if (!parsed) {
+      // Попытка угадать ход если названа только фигура + цифра (без буквы)
+      const textLower = text.toLowerCase()
+
+      // Ищем фигуру в тексте
+      let detectedPiece = null
+      for (const [pieceName, pieceSymbol] of Object.entries(this.pieces)) {
+        if (textLower.includes(pieceName)) {
+          detectedPiece = pieceSymbol
+          break
+        }
+      }
+
+      // Ищем цифру (горизонталь)
+      let detectedRank = null
+      for (const [rankName, rankSymbol] of Object.entries(this.ranks)) {
+        if (textLower.includes(rankName)) {
+          detectedRank = rankSymbol
+          break
+        }
+      }
+
+      // Если нашли фигуру + горизонталь, пробуем найти подходящий ход
+      if (detectedPiece && detectedRank) {
+        for (const move of legalMoves) {
+          const cleanMove = move.replace(/[x+#]/g, '')
+
+          // Проверяем что ход этой фигуры и на эту горизонталь
+          if (cleanMove[0] === detectedPiece && cleanMove[cleanMove.length - 1] === detectedRank) {
+            console.log(`[Parser] Угадал ход: ${move} (фигура: ${detectedPiece}, горизонталь: ${detectedRank})`)
+            return move
+          }
+        }
+      }
+
       return null
     }
 
