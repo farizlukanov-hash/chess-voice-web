@@ -16,6 +16,7 @@ function App() {
   const [isListening, setIsListening] = useState(false)
   const [playingAsWhite, setPlayingAsWhite] = useState(true)
   const [gameStarted, setGameStarted] = useState(false)
+  const [micStream, setMicStream] = useState(null)
 
   const recognitionRef = useRef(null)
   const stockfishRef = useRef(null)
@@ -561,17 +562,14 @@ function App() {
   const startGame = async () => {
     console.log('[startGame] Начинаю игру...')
 
-    // Явно запрашиваем разрешение на микрофон (важно для мобильных)
+    // Явно запрашиваем разрешение на микрофон и ДЕРЖИМ stream активным
     try {
       console.log('[startGame] Запрашиваю разрешение на микрофон через getUserMedia...')
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       console.log('[Микрофон] Разрешение getUserMedia получено, stream:', stream)
-      // Останавливаем поток - он нам не нужен, нужно только разрешение
-      stream.getTracks().forEach(track => {
-        console.log('[Микрофон] Останавливаю track:', track.label)
-        track.stop()
-      })
-      console.log('[Микрофон] Все треки остановлены')
+      // НЕ останавливаем поток - держим его активным для Android
+      setMicStream(stream)
+      console.log('[Микрофон] Stream сохранён и остаётся активным')
     } catch (error) {
       console.error('[Микрофон] Не удалось получить разрешение getUserMedia:', error)
       console.error('[Микрофон] Error name:', error.name)
@@ -685,6 +683,12 @@ function App() {
     setIsListening(false)
     if (recognitionRef.current) {
       recognitionRef.current.stop()
+    }
+
+    // Останавливаем микрофон stream если он активен
+    if (micStream) {
+      micStream.getTracks().forEach(track => track.stop())
+      setMicStream(null)
     }
 
     const newGame = new Chess()
