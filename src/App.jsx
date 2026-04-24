@@ -2,9 +2,12 @@ import React, { useState, useEffect, useRef } from 'react'
 import ChessBoard from './components/ChessBoard'
 import Controls from './components/Controls'
 import StatusPanel from './components/StatusPanel'
+import MicrophoneTest from './components/MicrophoneTest'
 import { Chess } from 'chess.js'
 import { VoiceParser } from './utils/VoiceParser'
 import { TTSEngine } from './utils/TTSEngine'
+import { NativeVoiceRecognition } from './utils/NativeVoice'
+import { Capacitor } from '@capacitor/core'
 import './App.css'
 
 function App() {
@@ -17,8 +20,10 @@ function App() {
   const [playingAsWhite, setPlayingAsWhite] = useState(true)
   const [gameStarted, setGameStarted] = useState(false)
   const [micStream, setMicStream] = useState(null)
+  const [showMicTest, setShowMicTest] = useState(false)
 
   const recognitionRef = useRef(null)
+  const nativeVoiceRef = useRef(null)
   const stockfishRef = useRef(null)
   const parserRef = useRef(new VoiceParser())
   const ttsRef = useRef(new TTSEngine())
@@ -27,6 +32,7 @@ function App() {
   const sessionStartTimeRef = useRef(null)
   const lastMoveSpeechRef = useRef('')
   const lastOpponentMoveSpeechRef = useRef('')
+  const isNative = Capacitor.isNativePlatform()
 
   // Синхронизируем gameRef с game
   useEffect(() => {
@@ -82,90 +88,16 @@ function App() {
     }
   }, [])
 
-  // Инициализация Web Speech API (ОДИН РАЗ)
+  // Инициализация нативного распознавания (ОДИН РАЗ)
   useEffect(() => {
-    console.log('[Инициализация] Проверяю поддержку Web Speech API...')
-    console.log('[Инициализация] webkitSpeechRecognition:', 'webkitSpeechRecognition' in window)
-    console.log('[Инициализация] SpeechRecognition:', 'SpeechRecognition' in window)
+    console.log('[Инициализация] Платформа:', isNative ? 'Native' : 'Web')
 
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      console.log('[Инициализация] Web Speech API поддерживается!')
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-      recognitionRef.current = new SpeechRecognition()
-      recognitionRef.current.lang = 'ru-RU'
-      recognitionRef.current.continuous = false  // Одна фраза за раз
-      recognitionRef.current.interimResults = false
-      recognitionRef.current.maxAlternatives = 1
-
-      console.log('[Инициализация] SpeechRecognition создан:', recognitionRef.current)
-
-      recognitionRef.current.onstart = () => {
-        console.log('[Микрофон] Слушаю...')
-        setStatus('🎤 Слушаю...')
-      }
-
-      recognitionRef.current.onresult = (event) => {
-        const transcript = event.results[0][0].transcript
-        const confidence = event.results[0][0].confidence
-        console.log('[Google] Распознал:', transcript, `(уверенность: ${(confidence * 100).toFixed(0)}%)`)
-        processVoiceCommand(transcript)
-      }
-
-      recognitionRef.current.onerror = (event) => {
-        console.log('[Микрофон] Событие onerror:', event.error)
-        // Игнорируем aborted и no-speech - это нормально
-        if (event.error === 'aborted' || event.error === 'no-speech') {
-          return
-        }
-
-        // При network ошибке - автоматически перезапускаем
-        if (event.error === 'network') {
-          console.log('[Микрофон] Ошибка сети, перезапускаю...')
-          setTimeout(() => {
-            if (isListeningRef.current && recognitionRef.current) {
-              try {
-                recognitionRef.current.start()
-              } catch (e) {
-                console.log('[Микрофон] Не удалось перезапустить после network error')
-              }
-            }
-          }, 500)
-          return
-        }
-
-        console.error('[Микрофон] Ошибка:', event.error)
-        setStatus(`❌ Ошибка микрофона: ${event.error}`)
-      }
-
-      recognitionRef.current.onend = () => {
-        console.log('[Микрофон] Сессия завершена, перезапускаю сразу')
-        // Перезапускаем СРАЗУ без задержки
-        if (isListeningRef.current && recognitionRef.current) {
-          try {
-            recognitionRef.current.start()
-            console.log('[Микрофон] Перезапущен')
-          } catch (e) {
-            console.log('[Микрофон] Не удалось перезапустить:', e.message)
-            setStatus(`❌ Не удалось перезапустить: ${e.message}`)
-            // Если не удалось - пробуем через 100ms
-            setTimeout(() => {
-              if (isListeningRef.current && recognitionRef.current) {
-                try {
-                  recognitionRef.current.start()
-                } catch (err) {
-                  console.log('[Микрофон] Повторная попытка не удалась')
-                  setStatus(`❌ Микрофон не работает: ${err.message}`)
-                }
-              }
-            }, 100)
-          }
-        }
-      }
-
-      console.log('[Инициализация] Все обработчики установлены')
+    if (isNative) {
+      console.log('[Инициализация] Использую нативное Android распознавание')
+      nativeVoiceRef.current = new NativeVoiceRecognition()
     } else {
-      console.error('[Микрофон] Web Speech API не поддерживается')
-      setStatus('❌ Ваш браузер не поддерживает распознавание речи')
+      console.log('[Инициализация] Использую Web Speech API для браузера')
+      // Для браузера можно оставить Web Speech API или Vosk
     }
   }, [])
 
@@ -222,6 +154,78 @@ function App() {
     } else {
       console.error('[TTS] Speech Synthesis не поддерживается')
       setStatus('❌ Ваш браузер не поддерживает озвучку. Используйте Chrome на Android или Safari на iOS')
+    }
+  }
+
+  const startListening = async () => {
+    console.log('[startListening] Запускаю распознавание...')
+    console.log('[startListening] isNative:', isNative)
+    console.log('[startListening] nativeVoiceRef.current:', nativeVoiceRef.current)
+    console.log('[startListening] window.AndroidVoice:', typeof window.AndroidVoice)
+
+    // Проверяем наличие AndroidVoice напрямую
+    if (typeof window.AndroidVoice !== 'undefined') {
+      console.log('[startListening] AndroidVoice найден! Использую его напрямую')
+
+      if (!nativeVoiceRef.current) {
+        console.log('[startListening] Создаю NativeVoiceRecognition')
+        nativeVoiceRef.current = new NativeVoiceRecognition()
+      }
+
+      const success = await nativeVoiceRef.current.start(
+        (text) => {
+          console.log('[NativeVoice] Распознано:', text)
+          processVoiceCommand(text)
+        },
+        (error) => {
+          console.error('[NativeVoice] Ошибка:', error)
+          setStatus(`❌ Ошибка микрофона: ${error}`)
+        }
+      )
+
+      if (success) {
+        console.log('[NativeVoice] Распознавание запущено')
+        setStatus('🎤 Слушаю...')
+      } else {
+        console.error('[NativeVoice] Не удалось запустить распознавание')
+        setStatus('❌ Не удалось запустить микрофон')
+      }
+    } else if (isNative && nativeVoiceRef.current) {
+      // Используем нативное Android распознавание
+      console.log('[startListening] Использую nativeVoiceRef')
+
+      const success = await nativeVoiceRef.current.start(
+        (text) => {
+          console.log('[NativeVoice] Распознано:', text)
+          processVoiceCommand(text)
+        },
+        (error) => {
+          console.error('[NativeVoice] Ошибка:', error)
+          setStatus(`❌ Ошибка микрофона: ${error}`)
+        }
+      )
+
+      if (success) {
+        console.log('[NativeVoice] Распознавание запущено')
+        setStatus('🎤 Слушаю...')
+      } else {
+        console.error('[NativeVoice] Не удалось запустить распознавание')
+        setStatus('❌ Не удалось запустить микрофон')
+      }
+    } else {
+      console.log('[startListening] Нативное распознавание недоступно')
+      console.log('[startListening] isNative:', isNative)
+      console.log('[startListening] nativeVoiceRef.current:', nativeVoiceRef.current)
+      console.log('[startListening] window.AndroidVoice:', typeof window.AndroidVoice)
+      setStatus('❌ Распознавание доступно только в APK версии')
+    }
+  }
+
+  const stopListening = async () => {
+    console.log('[stopListening] Останавливаю распознавание...')
+
+    if (isNative && nativeVoiceRef.current) {
+      await nativeVoiceRef.current.stop()
     }
   }
 
@@ -545,9 +549,7 @@ function App() {
 
   const handleGameOver = () => {
     setIsListening(false)
-    if (recognitionRef.current) {
-      recognitionRef.current.stop()
-    }
+    stopListening()
 
     const currentGame = gameRef.current
     if (currentGame.isCheckmate()) {
@@ -577,33 +579,15 @@ function App() {
     // Тестовая озвучка для активации TTS на мобильных
     speak('Партия началась')
 
-    // Запускаем микрофон напрямую без getUserMedia
+    // Запускаем микрофон
     console.log('[startGame] Жду 2 секунды перед запуском микрофона...')
     setTimeout(() => {
       console.log('[startGame] Устанавливаю isListening = true')
       setIsListening(true)
 
       setTimeout(() => {
-        console.log('[startGame] Пытаюсь запустить микрофон НАПРЯМУЮ...')
-        console.log('[startGame] recognitionRef.current:', recognitionRef.current)
-        console.log('[startGame] isListeningRef.current:', isListeningRef.current)
-
-        if (recognitionRef.current) {
-          try {
-            console.log('[startGame] Вызываю recognition.start() БЕЗ getUserMedia...')
-            recognitionRef.current.start()
-            console.log('[Микрофон] start() вызван успешно')
-          } catch (e) {
-            console.error('[Микрофон] Ошибка при вызове start():', e)
-            console.error('[Микрофон] Ошибка name:', e.name)
-            console.error('[Микрофон] Ошибка message:', e.message)
-            setStatus(`❌ Микрофон не работает на вашем устройстве. Попробуйте другой браузер или телефон.`)
-            speak('Микрофон не работает на вашем устройстве')
-          }
-        } else {
-          console.error('[startGame] recognitionRef.current is null!')
-          setStatus('❌ Микрофон не инициализирован. Перезагрузите страницу.')
-        }
+        console.log('[startGame] Запускаю микрофон...')
+        startListening()
       }, 500)
     }, 2000)
 
@@ -663,9 +647,7 @@ function App() {
 
   const restartGame = () => {
     setIsListening(false)
-    if (recognitionRef.current) {
-      recognitionRef.current.stop()
-    }
+    stopListening()
 
     // Останавливаем микрофон stream если он активен
     if (micStream) {
@@ -708,9 +690,14 @@ function App() {
             onStartGame={startGame}
             onRestartGame={restartGame}
             onSideChange={setPlayingAsWhite}
+            onOpenMicTest={() => setShowMicTest(true)}
           />
         </div>
       </div>
+
+      {showMicTest && (
+        <MicrophoneTest onClose={() => setShowMicTest(false)} />
+      )}
     </div>
   )
 }

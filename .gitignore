@@ -4,3 +4,7 @@ dist
 .env
 .DS_Store
 *.log
+
+# Vosk models (too large for git)
+public/vosk-model-*.zip
+public/vosk-model-*/

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Цифровой Суфлёр</string>
+    <string name="title_activity_main">Цифровой Суфлёр</string>
+    <string name="package_name">com.chess.voice.helper</string>
+    <string name="custom_url_scheme">com.chess.voice.helper</string>
+</resources>

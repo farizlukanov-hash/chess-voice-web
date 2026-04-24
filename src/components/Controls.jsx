@@ -10,7 +10,8 @@ const Controls = ({
   onRestartGame,
   onStartListening,
   onStopListening,
-  onSideChange
+  onSideChange,
+  onOpenMicTest
 }) => {
   const [micPermission, setMicPermission] = React.useState(null)
 
@@ -46,6 +47,10 @@ const Controls = ({
     <div className="controls">
       {!gameStarted ? (
         <>
+          <button className="btn btn-info" onClick={onOpenMicTest}>
+            🔧 Диагностика микрофона
+          </button>
+
           {micPermission !== 'granted' && (
             <button className="btn btn-warning" onClick={requestMicPermission}>
               🎤 Разрешить микрофон
