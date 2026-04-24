@@ -5,15 +5,16 @@ const Controls = ({
   gameStarted,
   playingAsWhite,
   isListening,
+  continuousListening,
   onStartGame,
   onRestartGame,
   onStartListening,
+  onStopListening,
   onSideChange
 }) => {
   const [micPermission, setMicPermission] = React.useState(null)
 
   React.useEffect(() => {
-    // Проверяем статус разрешения микрофона
     if (navigator.permissions) {
       navigator.permissions.query({ name: 'microphone' }).then(result => {
         setMicPermission(result.state)
@@ -27,13 +28,13 @@ const Controls = ({
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       stream.getTracks().forEach(track => track.stop())
       setMicPermission('granted')
-      alert('Разрешение получено! Теперь можете начать игру.')
+      alert('Разрешение получено! Теперь можете начать партию.')
     } catch (error) {
       alert('Доступ к микрофону запрещён. Проверьте настройки браузера.')
     }
   }
 
-  const handleStartGame = async () => {
+  const handleStartGame = () => {
     if (micPermission !== 'granted') {
       alert('Сначала разрешите доступ к микрофону, нажав кнопку выше.')
       return
@@ -60,13 +61,13 @@ const Controls = ({
               className={`side-btn ${playingAsWhite ? 'active' : ''}`}
               onClick={() => onSideChange(true)}
             >
-              Белые
+              Играю белыми
             </button>
             <button
               className={`side-btn ${!playingAsWhite ? 'active' : ''}`}
               onClick={() => onSideChange(false)}
             >
-              Чёрные
+              Играю чёрными
             </button>
           </div>
 
@@ -75,31 +76,46 @@ const Controls = ({
             onClick={handleStartGame}
             disabled={micPermission !== 'granted'}
           >
-            Начать игру
+            Начать партию
           </button>
         </>
       ) : (
         <>
-          <button
-            className="btn btn-voice"
-            onClick={onStartListening}
-            disabled={isListening}
-          >
-            {isListening ? '🎤 Слушаю...' : '🎤 Сказать ход'}
-          </button>
+          {!continuousListening ? (
+            <button
+              className="btn btn-voice"
+              onClick={onStartListening}
+            >
+              🎤 Включить постоянное прослушивание
+            </button>
+          ) : (
+            <button
+              className="btn btn-danger"
+              onClick={onStopListening}
+            >
+              ⏸ Остановить прослушивание
+            </button>
+          )}
 
           <button className="btn btn-secondary" onClick={onRestartGame}>
-            Новая игра
+            Начать сначала
           </button>
 
           <div className="commands-hint">
-            <p><strong>Как говорить ходы:</strong></p>
+            <p><strong>Как работает суфлёр:</strong></p>
+            <p>1. Противник делает ход на доске</p>
+            <p>2. Вы говорите его ход вслух</p>
+            <p>3. Суфлёр подсказывает ваш лучший ответ</p>
+            <p>4. Вы делаете этот ход на доске</p>
+            <br/>
+            <p><strong>Примеры:</strong></p>
             <p>• "пешка е четыре"</p>
             <p>• "конь ф три"</p>
             <p>• "слон це четыре"</p>
+            <br/>
             <p><strong>Команды:</strong></p>
             <p>• "отмена" - отменить ход</p>
-            <p>• "ещё раз" - повторить последний ход</p>
+            <p>• "ещё раз" - повторить подсказку</p>
           </div>
         </>
       )}

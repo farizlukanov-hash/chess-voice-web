@@ -95,6 +95,21 @@
   color: white;
 }
 
+.btn-danger {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+  color: white;
+  animation: pulse-danger 1.5s infinite;
+}
+
+@keyframes pulse-danger {
+  0%, 100% {
+    box-shadow: 0 2px 8px rgba(255, 107, 107, 0.4);
+  }
+  50% {
+    box-shadow: 0 2px 8px rgba(255, 107, 107, 0.8);
+  }
+}
+
 .btn-secondary {
   background: #6c757d;
   color: white;
