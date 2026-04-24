@@ -90,8 +90,9 @@ function MicrophoneTest({ onClose }) {
       const constraints = {
         audio: {
           deviceId: selectedDevice ? { exact: selectedDevice } : undefined,
-          echoCancellation: true,
-          noiseSuppression: true
+          echoCancellation: false,  // Отключаем для точного измерения
+          noiseSuppression: false,
+          autoGainControl: false
         }
       }
 
@@ -100,30 +101,57 @@ function MicrophoneTest({ onClose }) {
       const mediaStream = await navigator.mediaDevices.getUserMedia(constraints)
       addLog('✓ Поток получен!')
 
+      // Проверяем треки
+      const audioTracks = mediaStream.getAudioTracks()
+      addLog(`Аудио треков: ${audioTracks.length}`)
+      audioTracks.forEach(track => {
+        addLog(`  Трек: ${track.label}, enabled: ${track.enabled}, muted: ${track.muted}`)
+      })
+
       setStream(mediaStream)
       setIsRecording(true)
 
       // Создаем анализатор звука
       const audioContext = new (window.AudioContext || window.webkitAudioContext)()
+      addLog(`AudioContext создан, sampleRate: ${audioContext.sampleRate}`)
+
       const source = audioContext.createMediaStreamSource(mediaStream)
       const analyser = audioContext.createAnalyser()
-      analyser.fftSize = 256
+      analyser.fftSize = 2048
+      analyser.smoothingTimeConstant = 0.3
       source.connect(analyser)
 
-      const dataArray = new Uint8Array(analyser.frequencyBinCount)
+      addLog('Анализатор подключен')
+
+      const bufferLength = analyser.frequencyBinCount
+      const dataArray = new Uint8Array(bufferLength)
+      addLog(`Buffer length: ${bufferLength}`)
+
+      let animationId = null
 
       const updateLevel = () => {
-        if (!isRecording) return
+        analyser.getByteTimeDomainData(dataArray)
 
-        analyser.getByteFrequencyData(dataArray)
-        const average = dataArray.reduce((a, b) => a + b) / dataArray.length
-        setAudioLevel(Math.round(average))
+        // Вычисляем RMS (Root Mean Square) для точного уровня
+        let sum = 0
+        for (let i = 0; i < bufferLength; i++) {
+          const normalized = (dataArray[i] - 128) / 128
+          sum += normalized * normalized
+        }
+        const rms = Math.sqrt(sum / bufferLength)
+        const level = Math.round(rms * 100)
 
-        requestAnimationFrame(updateLevel)
+        setAudioLevel(level)
+
+        animationId = requestAnimationFrame(updateLevel)
       }
 
       updateLevel()
       addLog('Анализатор звука запущен. Говорите в микрофон!')
+
+      // Сохраняем ID анимации для остановки
+      mediaStream._animationId = animationId
+      mediaStream._audioContext = audioContext
 
     } catch (error) {
       addLog(`✗ Ошибка запуска теста: ${error.name} - ${error.message}`)
@@ -135,6 +163,19 @@ function MicrophoneTest({ onClose }) {
     addLog('Останавливаю тест...')
 
     if (stream) {
+      // Останавливаем анимацию
+      if (stream._animationId) {
+        cancelAnimationFrame(stream._animationId)
+        addLog('Анимация остановлена')
+      }
+
+      // Закрываем AudioContext
+      if (stream._audioContext) {
+        stream._audioContext.close()
+        addLog('AudioContext закрыт')
+      }
+
+      // Останавливаем треки
       stream.getTracks().forEach(track => {
         track.stop()
         addLog(`Трек остановлен: ${track.kind}`)
