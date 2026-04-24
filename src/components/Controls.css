@@ -1,0 +1,109 @@
+.controls {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.side-selection {
+  display: flex;
+  gap: 10px;
+}
+
+.side-btn {
+  flex: 1;
+  padding: 12px 20px;
+  font-size: 1rem;
+  font-weight: 600;
+  border: 2px solid #ddd;
+  background: white;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.side-btn:hover {
+  border-color: #667eea;
+  transform: translateY(-2px);
+}
+
+.side-btn.active {
+  background: #667eea;
+  color: white;
+  border-color: #667eea;
+}
+
+.btn {
+  padding: 15px 30px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.btn-voice {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.commands-hint {
+  background: #f9f9f9;
+  padding: 15px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: #666;
+  text-align: left;
+}
+
+.commands-hint p {
+  margin: 5px 0;
+}
+
+.commands-hint strong {
+  color: #333;
+}
+
+@media (max-width: 768px) {
+  .controls {
+    padding: 15px;
+  }
+
+  .btn {
+    padding: 12px 24px;
+    font-size: 1rem;
+  }
+
+  .commands-hint {
+    font-size: 0.85rem;
+  }
+}
