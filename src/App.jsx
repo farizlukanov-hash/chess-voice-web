@@ -34,6 +34,11 @@ function App() {
   const lastOpponentMoveSpeechRef = useRef('')
   const isNative = Capacitor.isNativePlatform()
 
+  console.log('[App] Инициализация, isNative:', isNative)
+  console.log('[App] Capacitor.isNativePlatform():', Capacitor.isNativePlatform())
+  console.log('[App] webkitSpeechRecognition доступен:', 'webkitSpeechRecognition' in window)
+  console.log('[App] SpeechRecognition доступен:', 'SpeechRecognition' in window)
+
   // Синхронизируем gameRef с game
   useEffect(() => {
     gameRef.current = game
