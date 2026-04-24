@@ -110,50 +110,73 @@ function App() {
         console.log('[Web Speech] Инициализирован')
 
         recognitionRef.current.onstart = () => {
-          console.log('[Web Speech] Слушаю...')
+          console.log('[Web Speech] onstart - Слушаю...')
           setStatus('🎤 Слушаю...')
         }
 
         recognitionRef.current.onresult = (event) => {
           const transcript = event.results[0][0].transcript
           const confidence = event.results[0][0].confidence
-          console.log('[Web Speech] Распознано:', transcript, `(${(confidence * 100).toFixed(0)}%)`)
+          console.log('[Web Speech] onresult - Распознано:', transcript, `(${(confidence * 100).toFixed(0)}%)`)
           processVoiceCommand(transcript)
         }
 
         recognitionRef.current.onerror = (event) => {
-          console.log('[Web Speech] Ошибка:', event.error)
+          console.log('[Web Speech] onerror - Событие:', event.error)
+          console.log('[Web Speech] onerror - Полный event:', event)
+
+          // Игнорируем aborted и no-speech
           if (event.error === 'aborted' || event.error === 'no-speech') {
+            console.log('[Web Speech] Игнорирую ошибку:', event.error)
             return
           }
+
+          // При network ошибке - автоматически перезапускаем
           if (event.error === 'network') {
+            console.log('[Web Speech] Ошибка сети, перезапускаю через 500мс...')
             setTimeout(() => {
               if (isListeningRef.current && recognitionRef.current) {
                 try {
                   recognitionRef.current.start()
+                  console.log('[Web Speech] Перезапущен после network error')
                 } catch (e) {
-                  console.log('[Web Speech] Не удалось перезапустить')
+                  console.log('[Web Speech] Не удалось перезапустить:', e.message)
                 }
               }
             }, 500)
             return
           }
+
+          // not-allowed - показываем пользователю
+          if (event.error === 'not-allowed') {
+            console.error('[Web Speech] NOT-ALLOWED - доступ запрещён!')
+            setStatus('❌ Доступ к микрофону запрещён')
+            setIsListening(false)
+            alert('Доступ к микрофону запрещён. Проверьте настройки браузера:\n1. Нажмите на иконку замка в адресной строке\n2. Разрешите доступ к микрофону\n3. Перезагрузите страницу')
+            return
+          }
+
           console.error('[Web Speech] Ошибка:', event.error)
           setStatus(`❌ Ошибка микрофона: ${event.error}`)
         }
 
         recognitionRef.current.onend = () => {
-          console.log('[Web Speech] Сессия завершена, перезапускаю')
+          console.log('[Web Speech] onend - Сессия завершена')
+          console.log('[Web Speech] isListeningRef.current:', isListeningRef.current)
+
           if (isListeningRef.current && recognitionRef.current) {
             try {
+              console.log('[Web Speech] Перезапускаю...')
               recognitionRef.current.start()
-              console.log('[Web Speech] Перезапущен')
+              console.log('[Web Speech] Перезапущен успешно')
             } catch (error) {
               console.log('[Web Speech] Ошибка перезапуска:', error.message)
               if (error.name === 'InvalidStateError') {
                 console.log('[Web Speech] Уже запущен, пропускаю')
               }
             }
+          } else {
+            console.log('[Web Speech] НЕ перезапускаю (isListening=false)')
           }
         }
       } else {
@@ -258,33 +281,35 @@ function App() {
       console.log('[startListening] Использую Web Speech API')
 
       try {
-        // ВАЖНО: Запрашиваем разрешение на микрофон перед запуском распознавания
-        console.log('[startListening] Запрашиваю разрешение на микрофон...')
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-        console.log('[startListening] Разрешение получено, останавливаю тестовый поток')
-        stream.getTracks().forEach(track => track.stop())
-
-        // Теперь запускаем распознавание
+        // Просто запускаем - Web Speech API сам запросит разрешение
+        console.log('[startListening] Вызываю recognition.start()...')
         recognitionRef.current.start()
-        console.log('[Web Speech] Запущен успешно')
-        setStatus('🎤 Слушаю...')
+        console.log('[Web Speech] start() вызван')
+        setStatus('🎤 Запускаю...')
       } catch (error) {
         console.error('[Web Speech] Ошибка запуска:', error)
+        console.error('[Web Speech] Error name:', error.name)
+        console.error('[Web Speech] Error message:', error.message)
+
         if (error.name === 'InvalidStateError') {
           console.log('[Web Speech] Уже запущен')
           setStatus('🎤 Слушаю...')
         } else if (error.name === 'NotAllowedError') {
           setStatus('❌ Доступ к микрофону запрещён. Разрешите в настройках браузера.')
           setIsListening(false)
+          alert('Доступ к микрофону запрещён. Проверьте настройки браузера и разрешите доступ к микрофону для этого сайта.')
         } else {
           setStatus(`❌ Ошибка: ${error.message}`)
           setIsListening(false)
+          alert(`Ошибка запуска распознавания: ${error.message}`)
         }
       }
     } else {
       console.error('[startListening] Распознавание недоступно')
+      console.error('[startListening] recognitionRef.current:', recognitionRef.current)
       setStatus('❌ Распознавание речи не поддерживается в этом браузере. Используйте Chrome или Edge.')
       setIsListening(false)
+      alert('Распознавание речи не поддерживается в этом браузере. Используйте Chrome или Edge.')
     }
   }
 
