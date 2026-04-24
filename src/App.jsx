@@ -658,17 +658,10 @@ function App() {
     // Тестовая озвучка для активации TTS на мобильных
     speak('Партия началась')
 
-    // Запускаем микрофон
-    console.log('[startGame] Жду 2 секунды перед запуском микрофона...')
-    setTimeout(() => {
-      console.log('[startGame] Устанавливаю isListening = true')
-      setIsListening(true)
-
-      setTimeout(() => {
-        console.log('[startGame] Запускаю микрофон...')
-        startListening()
-      }, 500)
-    }, 2000)
+    // НЕ запускаем микрофон автоматически - пользователь должен нажать кнопку
+    // Это требование мобильных браузеров для Web Speech API
+    console.log('[startGame] Микрофон НЕ запускается автоматически')
+    console.log('[startGame] Пользователь должен нажать кнопку "Включить прослушивание"')
 
     if (playingAsWhite) {
       console.log('[startGame] Играю за белых, делаю первый ход...')
