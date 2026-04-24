@@ -141,6 +141,9 @@ export class VoiceParser {
     text = text.replace(/\bв\s+(\d)/g, 'ф $1')
     text = text.replace(/\b([а-я]+)\s+в\s+(\d)/g, '$1 ф $2')
 
+    // Убираем лишние пробелы между буквой и цифрой (Google часто добавляет)
+    text = text.replace(/([а-яa-h])\s+(\d)/g, '$1$2')
+
     // Убираем окончания
     text = text.replace(/пешкой/g, 'пешка')
     text = text.replace(/конём/g, 'конь')
