@@ -186,13 +186,23 @@ function App() {
       const moves = currentGame.moves()
       if (moves.length > 0) {
         const randomMove = moves[Math.floor(Math.random() * moves.length)]
-        makeMyMove(currentGame, randomMove)
+        const moveObj = currentGame.move(randomMove)
+        if (moveObj) {
+          setGame(new Chess(currentGame.fen()))
+          setFen(currentGame.fen())
+          const speechText = ttsRef.current.moveToSpeech(moveObj.san)
+          setLastMove(moveObj.san)
+          setLastMoveSpeech(speechText)
+          setStatus(`✓ Ход обработан`)
+          speak(`Ходи ${speechText}`)
+          console.log('[DEBUG] Мой ход (fallback):', moveObj.san, '-> Речь:', speechText)
+        }
       }
       return
     }
 
     stockfishRef.current.postMessage(`position fen ${currentFen}`)
-    stockfishRef.current.postMessage('go depth 15')
+    stockfishRef.current.postMessage('go movetime 1000')
 
     const handleMessage = (event) => {
       const line = event.data
@@ -236,6 +246,8 @@ function App() {
     const currentGame = gameRef.current
     const currentFen = currentGame.fen()
 
+    setStatus('Думаю над первым ходом...')
+
     if (!stockfishRef.current) {
       // Fallback
       const moves = currentGame.moves()
@@ -246,15 +258,18 @@ function App() {
           setGame(new Chess(currentGame.fen()))
           setFen(currentGame.fen())
           const speechText = ttsRef.current.moveToSpeech(moveObj.san)
+          setLastMove(moveObj.san)
           setLastMoveSpeech(speechText)
-          speak(`Партия началась. Ходи ${speechText}`)
+          setStatus('✓ Готов')
+          speak(`Ходи ${speechText}`)
+          console.log('[DEBUG] Первый ход (fallback):', moveObj.san, '-> Речь:', speechText)
         }
       }
       return
     }
 
     stockfishRef.current.postMessage(`position fen ${currentFen}`)
-    stockfishRef.current.postMessage('go depth 15')
+    stockfishRef.current.postMessage('go movetime 1000')
 
     const handleMessage = (event) => {
       const line = event.data
@@ -270,8 +285,9 @@ function App() {
           const speechText = ttsRef.current.moveToSpeech(moveObj.san)
           setLastMove(moveObj.san)
           setLastMoveSpeech(speechText)
+          setStatus('✓ Готов')
 
-          speak(`Партия началась. Ходи ${speechText}`)
+          speak(`Ходи ${speechText}`)
           console.log('[DEBUG] Первый ход:', moveObj.san, '-> Речь:', speechText)
         }
 
