@@ -97,7 +97,68 @@ function App() {
       nativeVoiceRef.current = new NativeVoiceRecognition()
     } else {
       console.log('[Инициализация] Использую Web Speech API для браузера')
-      // Для браузера можно оставить Web Speech API или Vosk
+
+      // Инициализируем Web Speech API для браузера
+      if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+        recognitionRef.current = new SpeechRecognition()
+        recognitionRef.current.lang = 'ru-RU'
+        recognitionRef.current.continuous = false
+        recognitionRef.current.interimResults = false
+        recognitionRef.current.maxAlternatives = 1
+
+        console.log('[Web Speech] Инициализирован')
+
+        recognitionRef.current.onstart = () => {
+          console.log('[Web Speech] Слушаю...')
+          setStatus('🎤 Слушаю...')
+        }
+
+        recognitionRef.current.onresult = (event) => {
+          const transcript = event.results[0][0].transcript
+          const confidence = event.results[0][0].confidence
+          console.log('[Web Speech] Распознано:', transcript, `(${(confidence * 100).toFixed(0)}%)`)
+          processVoiceCommand(transcript)
+        }
+
+        recognitionRef.current.onerror = (event) => {
+          console.log('[Web Speech] Ошибка:', event.error)
+          if (event.error === 'aborted' || event.error === 'no-speech') {
+            return
+          }
+          if (event.error === 'network') {
+            setTimeout(() => {
+              if (isListeningRef.current && recognitionRef.current) {
+                try {
+                  recognitionRef.current.start()
+                } catch (e) {
+                  console.log('[Web Speech] Не удалось перезапустить')
+                }
+              }
+            }, 500)
+            return
+          }
+          console.error('[Web Speech] Ошибка:', event.error)
+          setStatus(`❌ Ошибка микрофона: ${event.error}`)
+        }
+
+        recognitionRef.current.onend = () => {
+          console.log('[Web Speech] Сессия завершена, перезапускаю')
+          if (isListeningRef.current && recognitionRef.current) {
+            try {
+              recognitionRef.current.start()
+              console.log('[Web Speech] Перезапущен')
+            } catch (error) {
+              console.log('[Web Speech] Ошибка перезапуска:', error.message)
+              if (error.name === 'InvalidStateError') {
+                console.log('[Web Speech] Уже запущен, пропускаю')
+              }
+            }
+          }
+        }
+      } else {
+        console.error('[Web Speech] Не поддерживается в этом браузере')
+      }
     }
   }, [])
 
@@ -160,8 +221,9 @@ function App() {
   const startListening = async () => {
     console.log('[startListening] Запускаю распознавание...')
     console.log('[startListening] isNative:', isNative)
-    console.log('[startListening] nativeVoiceRef.current:', nativeVoiceRef.current)
     console.log('[startListening] window.AndroidVoice:', typeof window.AndroidVoice)
+
+    setIsListening(true)
 
     // Проверяем наличие AndroidVoice напрямую
     if (typeof window.AndroidVoice !== 'undefined') {
@@ -189,44 +251,51 @@ function App() {
       } else {
         console.error('[NativeVoice] Не удалось запустить распознавание')
         setStatus('❌ Не удалось запустить микрофон')
+        setIsListening(false)
       }
-    } else if (isNative && nativeVoiceRef.current) {
-      // Используем нативное Android распознавание
-      console.log('[startListening] Использую nativeVoiceRef')
+    } else if (recognitionRef.current) {
+      // Используем Web Speech API для браузера
+      console.log('[startListening] Использую Web Speech API')
 
-      const success = await nativeVoiceRef.current.start(
-        (text) => {
-          console.log('[NativeVoice] Распознано:', text)
-          processVoiceCommand(text)
-        },
-        (error) => {
-          console.error('[NativeVoice] Ошибка:', error)
-          setStatus(`❌ Ошибка микрофона: ${error}`)
-        }
-      )
-
-      if (success) {
-        console.log('[NativeVoice] Распознавание запущено')
+      try {
+        recognitionRef.current.start()
+        console.log('[Web Speech] Запущен успешно')
         setStatus('🎤 Слушаю...')
-      } else {
-        console.error('[NativeVoice] Не удалось запустить распознавание')
-        setStatus('❌ Не удалось запустить микрофон')
+      } catch (error) {
+        console.error('[Web Speech] Ошибка запуска:', error)
+        if (error.name === 'InvalidStateError') {
+          console.log('[Web Speech] Уже запущен')
+          setStatus('🎤 Слушаю...')
+        } else {
+          setStatus(`❌ Ошибка: ${error.message}`)
+          setIsListening(false)
+        }
       }
     } else {
-      console.log('[startListening] Нативное распознавание недоступно')
-      console.log('[startListening] isNative:', isNative)
-      console.log('[startListening] nativeVoiceRef.current:', nativeVoiceRef.current)
-      console.log('[startListening] window.AndroidVoice:', typeof window.AndroidVoice)
-      setStatus('❌ Распознавание доступно только в APK версии')
+      console.error('[startListening] Распознавание недоступно')
+      setStatus('❌ Распознавание речи не поддерживается в этом браузере. Используйте Chrome или Edge.')
+      setIsListening(false)
     }
   }
 
   const stopListening = async () => {
     console.log('[stopListening] Останавливаю распознавание...')
 
-    if (isNative && nativeVoiceRef.current) {
+    setIsListening(false)
+
+    if (nativeVoiceRef.current) {
       await nativeVoiceRef.current.stop()
+      console.log('[NativeVoice] Остановлен')
+    } else if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop()
+        console.log('[Web Speech] Остановлен')
+      } catch (error) {
+        console.log('[Web Speech] Ошибка остановки:', error.message)
+      }
     }
+
+    setStatus('Прослушивание остановлено')
   }
 
   const processVoiceCommand = (text) => {
