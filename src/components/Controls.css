@@ -66,6 +66,30 @@
   color: white;
 }
 
+.btn-warning {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+  animation: pulse-button 2s infinite;
+}
+
+@keyframes pulse-button {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.mic-status {
+  padding: 12px;
+  background: #d4edda;
+  color: #155724;
+  border-radius: 8px;
+  font-weight: 600;
+  text-align: center;
+}
+
 .btn-voice {
   background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
   color: white;

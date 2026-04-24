@@ -10,25 +10,51 @@ const Controls = ({
   onStartListening,
   onSideChange
 }) => {
-  const handleStartGame = async () => {
-    // ЯВНЫЙ запрос микрофона ПЕРЕД началом игры
+  const [micPermission, setMicPermission] = React.useState(null)
+
+  React.useEffect(() => {
+    // Проверяем статус разрешения микрофона
+    if (navigator.permissions) {
+      navigator.permissions.query({ name: 'microphone' }).then(result => {
+        setMicPermission(result.state)
+        result.onchange = () => setMicPermission(result.state)
+      }).catch(() => setMicPermission('prompt'))
+    }
+  }, [])
+
+  const requestMicPermission = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      console.log('[Микрофон] Разрешение получено!')
-      // Останавливаем поток (нам нужно только разрешение)
       stream.getTracks().forEach(track => track.stop())
-      // Теперь запускаем игру
-      onStartGame()
+      setMicPermission('granted')
+      alert('Разрешение получено! Теперь можете начать игру.')
     } catch (error) {
-      console.error('[Микрофон] Доступ запрещён:', error)
-      alert('Доступ к микрофону запрещён. Разрешите доступ в настройках браузера и обновите страницу.')
+      alert('Доступ к микрофону запрещён. Проверьте настройки браузера.')
     }
+  }
+
+  const handleStartGame = async () => {
+    if (micPermission !== 'granted') {
+      alert('Сначала разрешите доступ к микрофону, нажав кнопку выше.')
+      return
+    }
+    onStartGame()
   }
 
   return (
     <div className="controls">
       {!gameStarted ? (
         <>
+          {micPermission !== 'granted' && (
+            <button className="btn btn-warning" onClick={requestMicPermission}>
+              🎤 Разрешить микрофон
+            </button>
+          )}
+
+          {micPermission === 'granted' && (
+            <div className="mic-status">✅ Микрофон разрешён</div>
+          )}
+
           <div className="side-selection">
             <button
               className={`side-btn ${playingAsWhite ? 'active' : ''}`}
@@ -44,7 +70,11 @@ const Controls = ({
             </button>
           </div>
 
-          <button className="btn btn-primary" onClick={handleStartGame}>
+          <button
+            className="btn btn-primary"
+            onClick={handleStartGame}
+            disabled={micPermission !== 'granted'}
+          >
             Начать игру
           </button>
         </>
