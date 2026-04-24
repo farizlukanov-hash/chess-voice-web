@@ -23,6 +23,7 @@ function App() {
   const ttsRef = useRef(new TTSEngine())
   const gameRef = useRef(game)
   const isListeningRef = useRef(false)
+  const sessionStartTimeRef = useRef(null)
 
   // Синхронизируем gameRef с game
   useEffect(() => {
@@ -69,13 +70,29 @@ function App() {
       recognitionRef.current.maxAlternatives = 1
 
       recognitionRef.current.onstart = () => {
-        console.log('[Микрофон] Слушаю...')
+        sessionStartTimeRef.current = Date.now()
+        console.log('[Микрофон] Слушаю... (сессия на 7 секунд)')
         setStatus('🎤 Слушаю...')
+
+        // Автоматически останавливаем через 7 секунд
+        setTimeout(() => {
+          if (recognitionRef.current && sessionStartTimeRef.current) {
+            const elapsed = Date.now() - sessionStartTimeRef.current
+            if (elapsed >= 6500) { // Останавливаем через 7 сек
+              try {
+                recognitionRef.current.stop()
+              } catch (e) {
+                console.log('[Микрофон] Уже остановлен')
+              }
+            }
+          }
+        }, 7000)
       }
 
       recognitionRef.current.onresult = (event) => {
         const transcript = event.results[0][0].transcript
-        console.log('[Google] Распознал:', transcript)
+        const confidence = event.results[0][0].confidence
+        console.log('[Google] Распознал:', transcript, `(уверенность: ${(confidence * 100).toFixed(0)}%)`)
         processVoiceCommand(transcript)
       }
 
