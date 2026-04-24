@@ -38,8 +38,13 @@ function App() {
   useEffect(() => {
     const initStockfish = async () => {
       try {
-        const Stockfish = await import('stockfish.js')
+        const Stockfish = (await import('stockfish')).default
         stockfishRef.current = Stockfish()
+
+        stockfishRef.current.onmessage = (msg) => {
+          console.log('[Stockfish] Сообщение:', msg)
+        }
+
         stockfishRef.current.postMessage('uci')
         console.log('[Stockfish] Инициализирован')
       } catch (error) {
@@ -220,13 +225,12 @@ function App() {
 
     let responded = false
 
-    const handleMessage = (event) => {
-      const line = event.data
-      console.log('[Stockfish] Ответ:', line)
+    const handleMessage = (msg) => {
+      console.log('[Stockfish] Ответ:', msg)
 
-      if (typeof line === 'string' && line.startsWith('bestmove') && !responded) {
+      if (typeof msg === 'string' && msg.startsWith('bestmove') && !responded) {
         responded = true
-        const bestMoveUCI = line.split(' ')[1]
+        const bestMoveUCI = msg.split(' ')[1]
         console.log('[Stockfish] Лучший ход UCI:', bestMoveUCI)
 
         // Конвертируем UCI в SAN
@@ -255,17 +259,17 @@ function App() {
           }
         }
 
-        stockfishRef.current.removeEventListener('message', handleMessage)
+        stockfishRef.current.onmessage = null
       }
     }
 
-    stockfishRef.current.addEventListener('message', handleMessage)
+    stockfishRef.current.onmessage = handleMessage
 
     // Таймаут на случай если Stockfish не ответит
     setTimeout(() => {
       if (!responded) {
         console.log('[Stockfish] ТАЙМАУТ - используем fallback')
-        stockfishRef.current.removeEventListener('message', handleMessage)
+        stockfishRef.current.onmessage = null
         const moves = currentGame.moves()
         if (moves.length > 0) {
           const randomMove = moves[Math.floor(Math.random() * moves.length)]
@@ -318,13 +322,12 @@ function App() {
 
     let responded = false
 
-    const handleMessage = (event) => {
-      const line = event.data
-      console.log('[Stockfish] Ответ:', line)
+    const handleMessage = (msg) => {
+      console.log('[Stockfish] Ответ:', msg)
 
-      if (typeof line === 'string' && line.startsWith('bestmove') && !responded) {
+      if (typeof msg === 'string' && msg.startsWith('bestmove') && !responded) {
         responded = true
-        const bestMoveUCI = line.split(' ')[1]
+        const bestMoveUCI = msg.split(' ')[1]
         console.log('[Stockfish] Первый ход UCI:', bestMoveUCI)
 
         const moveObj = currentGame.move(bestMoveUCI, { sloppy: true })
@@ -342,17 +345,17 @@ function App() {
           console.log('[DEBUG] Первый ход:', moveObj.san, '-> Речь:', speechText)
         }
 
-        stockfishRef.current.removeEventListener('message', handleMessage)
+        stockfishRef.current.onmessage = null
       }
     }
 
-    stockfishRef.current.addEventListener('message', handleMessage)
+    stockfishRef.current.onmessage = handleMessage
 
     // Таймаут
     setTimeout(() => {
       if (!responded) {
         console.log('[Stockfish] ТАЙМАУТ на первом ходе - используем fallback')
-        stockfishRef.current.removeEventListener('message', handleMessage)
+        stockfishRef.current.onmessage = null
         const moves = currentGame.moves()
         if (moves.length > 0) {
           const randomMove = moves[Math.floor(Math.random() * moves.length)]
